@@ -49,15 +49,39 @@
   a per-zone step count (✦ = starts here); clicking jumps to the quest card.
 - Quest steps count toward overall progress (295 steps; total now 1244 items).
 
+## Done (v7)
+- **Findable equipment, part 1**: Spirit Ashes (84), Sorceries (84) and
+  Incantations (129) as three new categories. Totals match published counts
+  exactly. Merchant-sold spells filed at the merchant's location; remembrance
+  trades under Roundtable Hold.
+- **"Key Items" split three ways** into Talismans / Bolstering Materials / Key
+  Items, using the game's own terminology. Done via `classifyKeyItem()`, a
+  name-pattern classifier, so future items file themselves.
+- **Cookbooks, prayerbooks, scrolls** (115) and **bell bearings** (26 — boss
+  drops and world finds only; the ~30 NPC-death bearings are excluded).
+- All scroll- and prayerbook-gated spells moved to **Miriel**, each labelled with
+  the book that unlocks it.
+- Header total **split into separate Zones and Quests bars** (1,388 / 295).
+- **UX pass**: fixed mobile horizontal scroll; header 215px → 179px open /
+  113px collapsed (⋯ menu + collapsible filter row); eliminated row wrapping
+  (337 → 0); sticky zone headers.
+- Repo published to <https://github.com/Paraiga/elden-ring-tracker>.
+
 ## Future features (add incrementally)
-1. **Legacy dungeon checklists** — notable loot inside the big legacy dungeons
-2. **Findable equipment** — weapons, armor, spirit ash summons, sorceries and incantations
-   (world pickups only — random enemy drops excluded)
-3. **Upgrade materials** — Smithing Stones / Somber stones (bell bearings), Ghost Gloveworts,
-   Scadutree Fragments, Revered Spirit Ash
-4. **Cookbooks, prayerbooks, scrolls**
-5. **Cracked pots / ritual pots / perfume bottles**
+1. **Weapons and armor** — the last major piece of findable equipment. Per-dungeon
+   wiki pages have exact locations; the overworld portion is the hard part.
+2. **Upgrade materials** — Smithing / Somber Smithing Stones, Ghost and Grave
+   Gloveworts, Scadutree Fragments, Revered Spirit Ash. The classifier already
+   routes all of these into Bolstering Materials.
+3. **Cracked pots / ritual pots / perfume bottles** — already routed to Key Items.
+4. **Legacy dungeon loot checklists** — largely subsumed by item 1.
+
+Deliberately not doing: splitting oversized "Open World" blocks by sub-area.
 
 ## Notes
-- Data lives in the `DATA` array at the top of the `<script>` in `index.html` — easy to hand-edit.
-- Checkmarks are keyed by item name, so renaming an entry un-checks it (export a backup first).
+- **See `HANDOVER.md`** for current state, data conventions, the save-ID
+  migration rule, the 22 `(verify)`-tagged entries, and GitHub Pages setup.
+- Data lives in `DATA` plus the `"Zone::Place"`-keyed maps in `index.html`.
+- Checkmarks are keyed `Zone::Category::Name::Location`, so renaming an entry
+  un-checks it — add an `ID_MIGRATIONS` line whenever an entry moves or is
+  relabelled, and verify by seeding the old ID.
