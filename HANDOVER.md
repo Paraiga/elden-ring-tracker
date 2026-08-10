@@ -216,13 +216,15 @@ account, no server" property the tracker currently has.
 
 ## 9. Repo notes
 
-- Git identity is set **repo-locally** (`Paraiga` / `clockworksolace@gmail.com`);
-  the global git config is untouched.
-- **The repo is now public, so that commit email is publicly visible.** If that
-  is unwanted, GitHub can supply a `noreply` address (Settings → Emails → *Keep
-  my email address private*), which you would then set with
-  `git config user.email <id>+Paraiga@users.noreply.github.com`. Note that
-  changing it only affects *future* commits; the existing one would need history
-  rewriting.
+- Git identity is set **repo-locally** (`Paraiga` /
+  `137770356+Paraiga@users.noreply.github.com`); the global git config is
+  untouched, so other repos are unaffected and will ask again.
+- The repo is public. Commit history was rewritten once, on 2026-08-10, to
+  replace a personal email with the GitHub `noreply` address — history is clean
+  and no further action is needed. New commits pick up the noreply address
+  automatically from the repo-local config.
+- Worth doing on GitHub: **Settings → Emails → "Keep my email address private"**
+  and **"Block command line pushes that expose my email"**. The second turns this
+  class of mistake into a rejected push rather than a public leak.
 - `.gitignore` excludes `elden-ring-tracker-backup-*.json`, so exported progress
   files dropped in this folder stay out of the repo automatically.
