@@ -1,0 +1,14 @@
+# Progress exports — your checkmarks live in the browser's localStorage.
+# These are personal save data, not source, and change constantly.
+elden-ring-tracker-backup-*.json
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Editor / OS cruft
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
