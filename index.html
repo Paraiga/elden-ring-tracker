@@ -255,8 +255,9 @@
   }
   .qmarker:hover { color: var(--gold); border-color: var(--gold-dim); background: #1a160f; }
   .qmarker .qm-count { color: #6e6350; font-size: .9em; margin-left: 5px; }
-  .qmarker.starts { border-color: var(--gold-dim); color: var(--gold); }
-  .qmarker.starts::before { content: "✦ "; }
+  /* ✦ means "your next step in this questline happens here" — see refreshCounts */
+  .qmarker.next { border-color: var(--gold-dim); color: var(--gold); }
+  .qmarker.next::before { content: "✦ "; }
   .qmarker.done { color: var(--done); border-color: #3d422c; }
   /* ---- quest cards ---- */
   .quest-start { color: var(--text-dim); font-size: .82em; font-style: italic; padding: 0 16px 8px; margin-top: -6px; }
@@ -300,7 +301,7 @@
   <div class="toolbar">
     <button id="view-zones" class="view-btn">Zones</button>
     <button id="view-quests" class="view-btn">Quests</button>
-    <input type="search" id="search" placeholder="Filter places, bosses, items, zones...">
+    <input type="search" id="search" placeholder="Filter zones, dungeons, bosses...">
     <button id="filters-btn" title="Show or hide the category filters">Filters <span id="filters-caret">▾</span></button>
     <div class="menu-wrap">
       <button id="more-btn" title="More actions" aria-haspopup="true" aria-expanded="false">⋯</button>
@@ -346,55 +347,35 @@
 // Checkmarks are keyed by category + exact name + location strings — renaming
 // an entry un-checks it (export a backup first if you edit).
 // ============================================================================
-const CATEGORIES = ["Dungeons", "Bosses", "Talismans", "Bolstering Materials", "Key Items",
-                    "Graces", "Spirit Ashes", "Sorceries", "Incantations"];
-
-// The `keyItems` arrays in DATA hold three of the game's own item classes. Rather
-// than retag ~180 entries, classify by name — the rules below cover the item types
-// in each class, so anything added later (smithing stones, cookbooks, pots) files
-// itself correctly. Anything unmatched is a talisman, which is true of every
-// current entry that is neither a map nor a seed/tear.
-const BOLSTERING_RE = /^(Golden Seed|Sacred Tear|Smithing Stone|Somber Smithing Stone|Ghost Glovewort|Grave Glovewort|Scadutree Fragment|Revered Spirit Ash)/;
-const KEY_ITEM_RE = /(^Map:|^Stonesword Key|^Memory Stone|^Dragon Heart|^Cracked |^Ritual Pot|^Perfume Bottle|^Crystal Tear|Cookbook|Prayerbook|Scroll|Physick|Bell Bearing)/;
-
-function classifyKeyItem(name) {
-  if (BOLSTERING_RE.test(name)) return "Bolstering Materials";
-  if (KEY_ITEM_RE.test(name)) return "Key Items";
-  return "Talismans";
-}
+// Deliberately just these two. Graces, talismans, key items, bolstering
+// materials, spirit ashes, sorceries and incantations were all tracked once and
+// removed in v8 — checking off ~1,200 pickups was more administration than the
+// tracker was worth. Quests are a separate view and stayed.
+const CATEGORIES = ["Dungeons", "Bosses"];
 
 const DATA = [
 
-// ---------------------------- BASE GAME ----------------------------
 { zone: "Limgrave", dlc: false, places: [
   { name: "Groveside Cave", dungeon: true,
-    bosses: [["Beastman of Farum Azula", "Groveside Cave"]],
-    keyItems: [["Flamedrake Talisman", "Groveside Cave — Beastman drop"]] },
+    bosses: [["Beastman of Farum Azula", "Groveside Cave"]] },
   { name: "Coastal Cave", dungeon: true,
-    bosses: [["Demi-Human Chiefs", "Coastal Cave"]], keyItems: [] },
+    bosses: [["Demi-Human Chiefs", "Coastal Cave"]] },
   { name: "Murkwater Cave", dungeon: true,
-    bosses: [["Patches", "Murkwater Cave"]], keyItems: [] },
+    bosses: [["Patches", "Murkwater Cave"]] },
   { name: "Highroad Cave", dungeon: true,
-    bosses: [["Guardian Golem", "Highroad Cave"]],
-    keyItems: [["Blue Dancer Charm", "Highroad Cave — Guardian Golem drop"]] },
+    bosses: [["Guardian Golem", "Highroad Cave"]] },
   { name: "Limgrave Tunnels", dungeon: true,
-    bosses: [["Stonedigger Troll", "Limgrave Tunnels"]],
-    keyItems: [["Roar Medallion", "Limgrave Tunnels — Stonedigger Troll drop"]] },
+    bosses: [["Stonedigger Troll", "Limgrave Tunnels"]] },
   { name: "Stormfoot Catacombs", dungeon: true,
-    bosses: [["Erdtree Burial Watchdog", "Stormfoot Catacombs"]], keyItems: [] },
+    bosses: [["Erdtree Burial Watchdog", "Stormfoot Catacombs"]] },
   { name: "Murkwater Catacombs", dungeon: true,
-    bosses: [["Grave Warden Duelist", "Murkwater Catacombs"]], keyItems: [] },
+    bosses: [["Grave Warden Duelist", "Murkwater Catacombs"]] },
   { name: "Deathtouched Catacombs", dungeon: true,
-    bosses: [["Black Knife Assassin", "Deathtouched Catacombs"]],
-    keyItems: [["Assassin's Crimson Dagger", "Deathtouched Catacombs — Black Knife Assassin"]] },
+    bosses: [["Black Knife Assassin", "Deathtouched Catacombs"]] },
   { name: "Fringefolk Hero's Grave", dungeon: true,
-    bosses: [["Ulcerated Tree Spirit", "Fringefolk Hero's Grave"]],
-    keyItems: [
-      ["Golden Seed", "Fringefolk Hero's Grave — Ulcerated Tree Spirit drop"],
-      ["Erdtree's Favor", "Fringefolk Hero's Grave, past the flame trap"]
-    ] },
+    bosses: [["Ulcerated Tree Spirit", "Fringefolk Hero's Grave"]] },
   { name: "Waypoint Ruins Cellar", dungeon: true,
-    bosses: [["Mad Pumpkin Head", "Waypoint Ruins Cellar"]], keyItems: [] },
+    bosses: [["Mad Pumpkin Head", "Waypoint Ruins Cellar"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Soldier of Godrick", "Stranded Graveyard"],
@@ -408,58 +389,28 @@ const DATA = [
       ["Deathbird", "Warmaster's Shack (night)"],
       ["Bell Bearing Hunter", "Warmaster's Shack (night)"],
       ["Margit, the Fell Omen", "Stormveil Castle approach"]
-    ],
-    keyItems: [
-      ["Map: Limgrave, West", "stele at Gatefront Ruins"],
-      ["Map: Limgrave, East", "stele on the road near Mistwood outskirts"],
-      ["Golden Seed", "sapling on the path from Stormgate to Stormhill Shack"],
-      ["Golden Seed", "Stormhill Shack, after Roderika moves on"],
-      ["Golden Seed", "in front of Fort Haight, Mistwood"],
-      ["Golden Seed", "reward from Kenneth Haight's quest"],
-      ["Sacred Tear", "Third Church of Marika"],
-      ["Green Turtle Talisman", "Summonwater Village, chest behind imp statue"],
-      ["Haligdrake Talisman", "Stranded Graveyard corpse"],
-      ["Axe Talisman", "Mistwood Ruins cellar"],
-      ["Hammer Talisman", "Recusant Henricus invasion, Stormhill"],
-      ["Lance Talisman", "east of the Limgrave colosseum"],
-      ["Arrow's Reach Talisman", "chest in the tower beside Stormgate"],
-      ["Blue-Feathered Branchsword", "Deathbird at Warmaster's Shack"],
-      ["Sacrificial Twig", "corpse west of Mistwood Ruins"],
-      ["Warrior Jar Shard", "kill Alexander early (alternative to Shard of Alexander)"]
     ] }
 ]},
 
 { zone: "Weeping Peninsula", dlc: false, places: [
   { name: "Tombsward Cave", dungeon: true,
-    bosses: [["Miranda the Blighted Bloom", "Tombsward Cave"]],
-    keyItems: [["Viridian Amber Medallion", "Tombsward Cave — Miranda drop"]] },
+    bosses: [["Miranda the Blighted Bloom", "Tombsward Cave"]] },
   { name: "Earthbore Cave", dungeon: true,
-    bosses: [["Runebear", "Earthbore Cave"]],
-    keyItems: [["Spelldrake Talisman", "Earthbore Cave — Runebear drop"]] },
+    bosses: [["Runebear", "Earthbore Cave"]] },
   { name: "Morne Tunnel", dungeon: true,
-    bosses: [["Scaly Misbegotten", "Morne Tunnel"]], keyItems: [] },
+    bosses: [["Scaly Misbegotten", "Morne Tunnel"]] },
   { name: "Impaler's Catacombs", dungeon: true,
-    bosses: [["Erdtree Burial Watchdog", "Impaler's Catacombs"]], keyItems: [] },
+    bosses: [["Erdtree Burial Watchdog", "Impaler's Catacombs"]] },
   { name: "Tombsward Catacombs", dungeon: true,
-    bosses: [["Cemetery Shade", "Tombsward Catacombs"]], keyItems: [] },
+    bosses: [["Cemetery Shade", "Tombsward Catacombs"]] },
   { name: "Castle Morne", dungeon: true,
-    bosses: [["Leonine Misbegotten", "Castle Morne"]],
-    keyItems: [["Twinblade Talisman", "Castle Morne, tower chest"]] },
+    bosses: [["Leonine Misbegotten", "Castle Morne"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Ancient Hero of Zamor", "Weeping Evergaol"],
       ["Erdtree Avatar", "Minor Erdtree"],
       ["Deathbird", "near Castle Morne (night)"],
       ["Night's Cavalry", "Castle Morne highway (night)"]
-    ],
-    keyItems: [
-      ["Map: Weeping Peninsula", "stele on the Castle Morne highway"],
-      ["Golden Seed", "under the Phantom Tree on the ridge toward Castle Morne"],
-      ["Sacred Tear", "Callu Baptismal Church"],
-      ["Sacred Tear", "Church of Pilgrimage"],
-      ["Sacred Tear", "Fourth Church of Marika"],
-      ["Crimson Amber Medallion", "nomadic merchant west of Oridys's Rise"],
-      ["Radagon's Scarseal", "Weeping Evergaol — Ancient Hero of Zamor"]
     ] }
 ]},
 
@@ -468,47 +419,31 @@ const DATA = [
     bosses: [
       ["Godrick the Grafted", "Stormveil Castle"],
       ["Ulcerated Tree Spirit", "Stormveil cellar (optional)"]
-    ],
-    keyItems: [
-      ["Golden Seed", "beside the glowing tree near Nepheli's room"],
-      ["Golden Seed", "cellar Ulcerated Tree Spirit drop"],
-      ["Arsenal Charm", "given by Nepheli Loux after Godrick"],
-      ["Boltdrake Talisman", "corpse near the rampart toward Limgrave Tower Bridge"],
-      ["Prince of Death's Pustule", "lowest cellar level"],
-      ["Curved Sword Talisman", "chest in the Banished Knight hall"],
-      ["Claw Talisman", "atop the rooftop towers"]
     ] }
 ]},
 
 { zone: "Liurnia of the Lakes", dlc: false, places: [
   { name: "Stillwater Cave", dungeon: true,
-    bosses: [["Cleanrot Knight", "Stillwater Cave"]],
-    keyItems: [["Winged Sword Insignia", "Stillwater Cave — Cleanrot Knight"]] },
+    bosses: [["Cleanrot Knight", "Stillwater Cave"]] },
   { name: "Lakeside Crystal Cave", dungeon: true,
-    bosses: [["Bloodhound Knight", "Lakeside Crystal Cave"]],
-    keyItems: [
-      ["Cerulean Amber Medallion", "Lakeside Crystal Cave — Bloodhound Knight"],
-      ["Spear Talisman", "Lakeside Crystal Cave chest"]
-    ] },
+    bosses: [["Bloodhound Knight", "Lakeside Crystal Cave"]] },
   { name: "Academy Crystal Cave", dungeon: true,
-    bosses: [["Crystalian Duo", "Academy Crystal Cave"]], keyItems: [] },
+    bosses: [["Crystalian Duo", "Academy Crystal Cave"]] },
   { name: "Raya Lucaria Crystal Tunnel", dungeon: true,
-    bosses: [["Crystalian", "Raya Lucaria Crystal Tunnel"]], keyItems: [] },
+    bosses: [["Crystalian", "Raya Lucaria Crystal Tunnel"]] },
   { name: "Road's End Catacombs", dungeon: true,
-    bosses: [["Spirit-Caller Snail", "Road's End Catacombs"]], keyItems: [] },
+    bosses: [["Spirit-Caller Snail", "Road's End Catacombs"]] },
   { name: "Black Knife Catacombs", dungeon: true,
     bosses: [
       ["Black Knife Assassin", "Black Knife Catacombs"],
       ["Cemetery Shade", "Black Knife Catacombs"]
-    ],
-    keyItems: [["Assassin's Cerulean Dagger", "Black Knife Catacombs — Black Knife Assassin"]] },
+    ] },
   { name: "Cliffbottom Catacombs", dungeon: true,
-    bosses: [["Erdtree Burial Watchdog Duo", "Cliffbottom Catacombs"]], keyItems: [] },
+    bosses: [["Erdtree Burial Watchdog Duo", "Cliffbottom Catacombs"]] },
   { name: "Caria Manor", dungeon: true,
-    bosses: [["Royal Knight Loretta", "Caria Manor"]],
-    keyItems: [["Golden Seed", "Caria Manor, upper level Phantom Tree"]] },
+    bosses: [["Royal Knight Loretta", "Caria Manor"]] },
   { name: "Ruin-Strewn Precipice", dungeon: true,
-    bosses: [["Magma Wyrm Makar", "Ruin-Strewn Precipice"]], keyItems: [] },
+    bosses: [["Magma Wyrm Makar", "Ruin-Strewn Precipice"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Royal Revenant", "Kingsrealm Ruins"],
@@ -523,30 +458,6 @@ const DATA = [
       ["Deathbird", "Scenic Isle (night)"],
       ["Death Rite Bird", "Gate Town (night)"],
       ["Bell Bearing Hunter", "Church of Vows (night)"]
-    ],
-    keyItems: [
-      ["Map: Liurnia, East", "stele on the highway near Liurnia Lake Shore"],
-      ["Map: Liurnia, North", "stele on the northern lake road"],
-      ["Map: Liurnia, West", "stele on the west-shore road"],
-      ["Golden Seed", "Academy Gate Town, near the glowing tree"],
-      ["Golden Seed", "sapling west of the Academy courtyard"],
-      ["Golden Seed", "broken bridge north of the Main Academy Gate"],
-      ["Golden Seed", "southwest of Ravine-Veiled Village"],
-      ["Sacred Tear", "Church of Irith"],
-      ["Sacred Tear", "Bellum Church"],
-      ["Sacred Tear", "Church of Inhibition"],
-      ["Cerulean Seed Talisman", "Carian Study Hall"],
-      ["Stargazer Heirloom", "top of the Divine Tower of Liurnia"],
-      ["Two Fingers Heirloom", "Purified Ruins chest"],
-      ["Pearldrake Talisman", "The Four Belfries"],
-      ["Stalwart Horn Charm", "near the Walking Mausoleum, east Liurnia"],
-      ["Companion Jar", "Jar Bairn's quest, Jarburg"],
-      ["Carian Filigreed Crest", "bought from War Counselor Iji"],
-      ["Magic Scorpion Charm", "Seluvis's quest (Amber Starlight)"],
-      ["Crucible Knot Talisman", "Omenkiller drop, Village of the Albinaurics"],
-      ["Red-Feathered Branchsword", "Deathbird northeast of Scenic Isle"],
-      ["Shabriri's Woe", "Frenzied Flame Village corpse"],
-      ["Sacrificial Twig", "near Malefactor's Evergaol"]
     ] }
 ]},
 
@@ -555,9 +466,6 @@ const DATA = [
     bosses: [
       ["Glintstone Dragon Adula", "Three Sisters / Moonlight Altar"],
       ["Alecto, Black Knife Ringleader", "Ringleader's Evergaol (Moonlight Altar)"]
-    ],
-    keyItems: [
-      ["Cerulean Amber Medallion +2", "Lunar Estate Ruins chest (after Astel)"]
     ] }
 ]},
 
@@ -566,37 +474,29 @@ const DATA = [
     bosses: [
       ["Red Wolf of Radagon", "Academy of Raya Lucaria"],
       ["Rennala, Queen of the Full Moon", "Academy of Raya Lucaria"]
-    ],
-    keyItems: [
-      ["Graven-School Talisman", "hidden room before the Debate Parlor"],
-      ["Radagon Icon", "chest on the Debate Parlor second floor"],
-      ["Longtail Cat Talisman", "lowest level of the water wheel"]
     ] }
 ]},
 
 { zone: "Caelid", dlc: false, places: [
   { name: "Gael Tunnel", dungeon: true,
-    bosses: [["Magma Wyrm", "Gael Tunnel"]], keyItems: [] },
+    bosses: [["Magma Wyrm", "Gael Tunnel"]] },
   { name: "Sellia Crystal Tunnel", dungeon: true,
-    bosses: [["Fallingstar Beast", "Sellia Crystal Tunnel"]],
-    keyItems: [["Faithful's Canvas Talisman", "Sellia Crystal Tunnel corpse"]] },
+    bosses: [["Fallingstar Beast", "Sellia Crystal Tunnel"]] },
   { name: "Abandoned Cave", dungeon: true,
-    bosses: [["Cleanrot Knight Duo", "Abandoned Cave"]],
-    keyItems: [["Gold Scarab", "Abandoned Cave — Cleanrot Knight duo"]] },
+    bosses: [["Cleanrot Knight Duo", "Abandoned Cave"]] },
   { name: "Gaol Cave", dungeon: true,
-    bosses: [["Frenzied Duelist", "Gaol Cave"]], keyItems: [] },
+    bosses: [["Frenzied Duelist", "Gaol Cave"]] },
   { name: "Minor Erdtree Catacombs", dungeon: true,
-    bosses: [["Erdtree Burial Watchdog Duo", "Minor Erdtree Catacombs"]], keyItems: [] },
+    bosses: [["Erdtree Burial Watchdog Duo", "Minor Erdtree Catacombs"]] },
   { name: "Caelid Catacombs", dungeon: true,
-    bosses: [["Cemetery Shade", "Caelid Catacombs"]], keyItems: [] },
+    bosses: [["Cemetery Shade", "Caelid Catacombs"]] },
   { name: "War-Dead Catacombs", dungeon: true,
-    bosses: [["Putrid Tree Spirit", "War-Dead Catacombs"]],
-    keyItems: [["Golden Seed", "War-Dead Catacombs — Putrid Tree Spirit drop"]] },
+    bosses: [["Putrid Tree Spirit", "War-Dead Catacombs"]] },
   { name: "Redmane Castle", dungeon: true,
     bosses: [
       ["Misbegotten Warrior & Crucible Knight", "Redmane Castle"],
       ["Starscourge Radahn", "Wailing Dunes"]
-    ], keyItems: [] },
+    ] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Battlemage Hugues", "Sellia Evergaol"],
@@ -607,47 +507,24 @@ const DATA = [
       ["Decaying Ekzykes", "Caelid Highway (field)"],
       ["Night's Cavalry", "southern Caelid Highway (night)"],
       ["Death Rite Bird", "southern Aeonia Swamp (night)"]
-    ],
-    keyItems: [
-      ["Map: Caelid", "stele beside the Caelid Highway"],
-      ["Golden Seed", "Sellia, Town of Sorcery — northern Phantom Tree"],
-      ["Golden Seed", "road to Redmane Castle, south of the merchant"],
-      ["Sacred Tear", "Church of the Plague"],
-      ["Starscourge Heirloom", "Fort Gael"],
-      ["Prosthesis-Wearer Heirloom", "from Gowry — Millicent's quest"],
-      ["Spelldrake Talisman +1", "Sellia, Town of Sorcery — sealed rooftop chest"],
-      ["Arrow's Sting Talisman", "chest atop the tower near the Impassable Greatbridge"],
-      ["Flock's Canvas Talisman", "Gowry, after Millicent's quest"],
-      ["Sacred Scorpion Charm", "Anastasia invasion near the Smoldering Church"]
     ] }
 ]},
 
 { zone: "Greyoll's Dragonbarrow", dlc: false, places: [
   { name: "Dragonbarrow Cave", dungeon: true,
-    bosses: [["Beastman of Farum Azula Duo", "Dragonbarrow Cave"]],
-    keyItems: [
-      ["Flamedrake Talisman +2", "Dragonbarrow Cave — Beastman duo"],
-      ["Bull-Goat's Talisman", "Dragonbarrow Cave side chamber"]
-    ] },
+    bosses: [["Beastman of Farum Azula Duo", "Dragonbarrow Cave"]] },
   { name: "Sellia Hideaway", dungeon: true,
-    bosses: [["Putrid Crystalian Trio", "Sellia Hideaway"]], keyItems: [] },
+    bosses: [["Putrid Crystalian Trio", "Sellia Hideaway"]] },
   { name: "Divine Tower of Caelid", dungeon: true,
-    bosses: [["Godskin Apostle", "Divine Tower of Caelid"]], keyItems: [] },
+    bosses: [["Godskin Apostle", "Divine Tower of Caelid"]] },
   { name: "Fort Faroth", dungeon: true,
-    bosses: [["Elder Dragon Greyoll", "Fort Faroth cliffside"]],
-    keyItems: [["Radagon's Soreseal", "Fort Faroth, down the ladder"]] },
+    bosses: [["Elder Dragon Greyoll", "Fort Faroth cliffside"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Black Blade Kindred", "Bestial Sanctum"],
       ["Erdtree Avatar", "Minor Erdtree"],
       ["Night's Cavalry", "Dragonbarrow (night)"],
       ["Bell Bearing Hunter", "Isolated Merchant's Shack (night)"]
-    ],
-    keyItems: [
-      ["Map: Dragonbarrow", "stele near Dragonbarrow West"],
-      ["Golden Seed", "roadside on the route to the Bestial Sanctum"],
-      ["Great-Jar's Arsenal", "defeat the Great-Jar's three knights"],
-      ["Dragoncrest Shield Talisman", "cliff ledge near the Bestial Sanctum"]
     ] }
 ]},
 
@@ -656,13 +533,6 @@ const DATA = [
     bosses: [
       ["Dragonkin Soldier", "Siofra River"],
       ["Ancestor Spirit", "Hallowhorn Grounds ritual"]
-    ],
-    keyItems: [
-      ["Map: Siofra River", "stele near Siofra River Bank"],
-      ["Golden Seed", "across the bridge north of Worshipper's Woods"],
-      ["Marika's Scarseal", "behind the waterfall after the Dragonkin Soldier"],
-      ["Clarifying Horn Charm", "Deep Siofra Well stairs"],
-      ["Mottled Necklace", "ledge by the bridge near the Nokron waygate"]
     ] }
 ]},
 
@@ -671,39 +541,23 @@ const DATA = [
     bosses: [
       ["Mimic Tear", "Nokron, Eternal City"],
       ["Regal Ancestor Spirit", "Nokron, Hallowhorn Grounds"]
-    ],
-    keyItems: [
-      ["Mottled Necklace +1", "Nokron rooftop near the Spirit Jellyfish"],
-      ["Clarifying Horn Charm +1", "Nokron, near Ancestral Woods"]
     ] },
   { name: "Siofra Aqueduct", dungeon: true,
-    bosses: [["Valiant Gargoyles", "Siofra Aqueduct"]], keyItems: [] }
+    bosses: [["Valiant Gargoyles", "Siofra Aqueduct"]] }
 ]},
 
 { zone: "Ainsel River", dlc: false, places: [
   { name: "Ainsel River", dungeon: true,
-    bosses: [["Dragonkin Soldier of Nokstella", "Ainsel River Main"]],
-    keyItems: [
-      ["Map: Ainsel River", "stele near Ainsel River Downstream"],
-      ["Immunizing Horn Charm", "Ainsel River, giant ant nest"]
-    ] }
+    bosses: [["Dragonkin Soldier of Nokstella", "Ainsel River Main"]] }
 ]},
 
 { zone: "Nokstella & Lake of Rot", dlc: false, places: [
   { name: "Nokstella, Eternal City", dungeon: true,
-    bosses: [],
-    keyItems: [
-      ["Golden Seed", "Nokstella, past the Moon of Nokstella temple"],
-      ["Moon of Nokstella", "Nokstella, chest guarded by silver tears"]
-    ] },
+    bosses: [] },
   { name: "Lake of Rot", dungeon: true,
-    bosses: [["Dragonkin Soldier", "Lake of Rot (drops the Dragonscale Blade)"]],
-    keyItems: [
-      ["Golden Seed", "Lake of Rot — Putrid Tree Spirit near the Grand Cloister"],
-      ["Immunizing Horn Charm +1", "Lake of Rot side chamber"]
-    ] },
+    bosses: [["Dragonkin Soldier", "Lake of Rot (drops the Dragonscale Blade)"]] },
   { name: "Grand Cloister", dungeon: true,
-    bosses: [["Astel, Naturalborn of the Void", "Grand Cloister"]], keyItems: [] }
+    bosses: [["Astel, Naturalborn of the Void", "Grand Cloister"]] }
 ]},
 
 { zone: "Deeproot Depths", dlc: false, places: [
@@ -712,35 +566,25 @@ const DATA = [
       ["Crucible Knight Siluria", "Deeproot Depths"],
       ["Fia's Champions", "Prince of Death's Throne"],
       ["Lichdragon Fortissax", "Deathbed Dream"]
-    ],
-    keyItems: [
-      ["Map: Deeproot Depths", "stele near The Nameless Eternal City"],
-      ["Prince of Death's Cyst", "Runebear behind the waterfall"]
     ] }
 ]},
 
 { zone: "Altus Plateau", dlc: false, places: [
   { name: "Old Altus Tunnel", dungeon: true,
-    bosses: [["Stonedigger Troll", "Old Altus Tunnel"]],
-    keyItems: [["Boltdrake Talisman +1", "Old Altus Tunnel chest"]] },
+    bosses: [["Stonedigger Troll", "Old Altus Tunnel"]] },
   { name: "Altus Tunnel", dungeon: true,
-    bosses: [["Crystalian Duo", "Altus Tunnel"]],
-    keyItems: [["Arsenal Charm +1", "Altus Tunnel corpse"]] },
+    bosses: [["Crystalian Duo", "Altus Tunnel"]] },
   { name: "Sage's Cave", dungeon: true,
     bosses: [
       ["Black Knife Assassin", "Sage's Cave"],
       ["Necromancer Garris", "Sage's Cave"]
-    ],
-    keyItems: [["Concealing Veil", "Sage's Cave — Black Knife Assassin"]] },
-  { name: "Perfumer's Grotto", dungeon: true, bosses: [], keyItems: [] },
-  { name: "Sainted Hero's Grave", dungeon: true,
-    bosses: [["Ancient Hero of Zamor", "Sainted Hero's Grave"]],
-    keyItems: [
-      ["Crimson Seed Talisman", "Sainted Hero's Grave, imp-statue alcove"],
-      ["Dragoncrest Shield Talisman +1", "Sainted Hero's Grave"]
     ] },
+  { name: "Perfumer's Grotto", dungeon: true,
+    bosses: [] },
+  { name: "Sainted Hero's Grave", dungeon: true,
+    bosses: [["Ancient Hero of Zamor", "Sainted Hero's Grave"]] },
   { name: "Shaded Castle", dungeon: true,
-    bosses: [["Elemer of the Briar", "Shaded Castle"]], keyItems: [] },
+    bosses: [["Elemer of the Briar", "Shaded Castle"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Godefroy the Grafted", "Golden Lineage Evergaol"],
@@ -752,37 +596,20 @@ const DATA = [
       ["Tree Sentinel Duo", "Outer Wall Phantom Tree"],
       ["Night's Cavalry", "Altus Highway Junction (night)"],
       ["Sanguine Noble", "Writheblood Ruins (invasion)"]
-    ],
-    keyItems: [
-      ["Map: Altus Plateau", "stele at the Altus Highway Junction"],
-      ["Golden Seed", "Phantom Tree north of the Seethewater River"],
-      ["Golden Seed", "southeast of Windmill Village"],
-      ["Golden Seed", "roadside north of the Altus Highway Junction"],
-      ["Golden Seed", "northwest of the Minor Erdtree"],
-      ["Golden Seed", "Erdtree-Gazing Hill, north of Lux Ruins"],
-      ["Sacred Tear", "Second Church of Marika"],
-      ["Sacred Tear", "Stormcaller Church"],
-      ["Godfrey Icon", "Godefroy drop, Golden Lineage Evergaol"],
-      ["Greatshield Talisman", "cart east of Erdtree-Gazing Hill"],
-      ["Ritual Sword Talisman", "Demi-Human Queen Gilika, Lux Ruins"],
-      ["Perfumer's Talisman", "Perfumer's Ruins"],
-      ["Sacrificial Twig", "northwest of the Altus Highway Junction"]
     ] }
 ]},
 
 { zone: "Mt. Gelmir", dlc: false, places: [
   { name: "Seethewater Cave", dungeon: true,
-    bosses: [["Kindred of Rot Duo", "Seethewater Cave"]],
-    keyItems: [["Kindred of Rot's Exultation", "Seethewater Cave — Kindred duo"]] },
+    bosses: [["Kindred of Rot Duo", "Seethewater Cave"]] },
   { name: "Volcano Cave", dungeon: true,
-    bosses: [["Demi-Human Queen Margot", "Volcano Cave"]], keyItems: [] },
+    bosses: [["Demi-Human Queen Margot", "Volcano Cave"]] },
   { name: "Wyndham Catacombs", dungeon: true,
-    bosses: [["Erdtree Burial Watchdog", "Wyndham Catacombs"]],
-    keyItems: [["Lightning Scorpion Charm", "Wyndham Catacombs, imp-statue room"]] },
+    bosses: [["Erdtree Burial Watchdog", "Wyndham Catacombs"]] },
   { name: "Unsightly Catacombs", dungeon: true,
-    bosses: [["Perfumer Tricia & Misbegotten Warrior", "Unsightly Catacombs"]], keyItems: [] },
+    bosses: [["Perfumer Tricia & Misbegotten Warrior", "Unsightly Catacombs"]] },
   { name: "Gelmir Hero's Grave", dungeon: true,
-    bosses: [["Red Wolf of the Champion", "Gelmir Hero's Grave"]], keyItems: [] },
+    bosses: [["Red Wolf of the Champion", "Gelmir Hero's Grave"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Magma Wyrm", "Fort Laiedd / Seethewater Terminus"],
@@ -790,12 +617,6 @@ const DATA = [
       ["Ulcerated Tree Spirit", "Minor Erdtree"],
       ["Tibia Mariner", "Wyndham Ruins"],
       ["Demi-Human Queen Maggie", "Hermit Village (field)"]
-    ],
-    keyItems: [
-      ["Map: Mt. Gelmir", "stele on the Road of Iniquity"],
-      ["Golden Seed", "west of the Ninth Mt. Gelmir Campsite, toward Volcano Manor"],
-      ["Pearldrake Talisman +1", "Wyndham Ruins, imp statue"],
-      ["Fire Scorpion Charm", "islet west of Fort Laiedd"]
     ] }
 ]},
 
@@ -806,33 +627,22 @@ const DATA = [
       ["Abductor Virgins", "Volcano Manor underside"],
       ["Godskin Noble", "Temple of Eiglay"],
       ["Rykard, Lord of Blasphemy", "Audience Chamber"]
-    ],
-    keyItems: [
-      ["Crimson Amber Medallion +1", "Guest Hall, corpse by the imp statue"],
-      ["Dagger Talisman", "imp-statue room with the Man-Serpents"],
-      ["Taker's Cameo", "Juno Hoslow contract reward"],
-      ["Crepus's Vial", "Rileigh contract reward"],
-      ["Daedicar's Woe", "Rya's quest"]
     ] }
 ]},
 
 { zone: "Leyndell & Capital Outskirts", dlc: false, places: [
   { name: "Auriza Hero's Grave", dungeon: true,
-    bosses: [["Crucible Knight Ordovis & Crucible Knight", "Auriza Hero's Grave"]],
-    keyItems: [["Crucible Feather Talisman", "Auriza Hero's Grave"]] },
+    bosses: [["Crucible Knight Ordovis & Crucible Knight", "Auriza Hero's Grave"]] },
   { name: "Auriza Side Tomb", dungeon: true,
-    bosses: [["Grave Warden Duelist", "Auriza Side Tomb"]], keyItems: [] },
+    bosses: [["Grave Warden Duelist", "Auriza Side Tomb"]] },
   { name: "Sealed Tunnel", dungeon: true,
-    bosses: [["Onyx Lord", "Sealed Tunnel"]], keyItems: [] },
-  { name: "Divine Tower of West Altus", dungeon: true, bosses: [], keyItems: [] },
+    bosses: [["Onyx Lord", "Sealed Tunnel"]] },
+  { name: "Divine Tower of West Altus", dungeon: true,
+    bosses: [] },
   { name: "Leyndell, Royal Capital (legacy dungeon)", dungeon: true, legacy: true,
     bosses: [
       ["Godfrey, First Elden Lord (Golden Shade)", "Erdtree Sanctuary"],
       ["Morgott, the Omen King", "Elden Throne"]
-    ],
-    keyItems: [
-      ["Blessed Dew Talisman", "west of the Divine Bridge grace"],
-      ["Ritual Shield Talisman", "in front of the Leyndell colosseum door"]
     ] },
   { name: "Open World", dungeon: false,
     bosses: [
@@ -841,43 +651,25 @@ const DATA = [
       ["Deathbird", "Minor Erdtree Church east of capital (night)"],
       ["Bell Bearing Hunter", "Hermit Merchant's Shack (night)"],
       ["Fell Twins", "Divine Tower of East Altus"]
-    ],
-    keyItems: [
-      ["Map: Leyndell, Royal Capital", "stele near the Outer Wall Phantom Tree"],
-      ["Golden Seed ×2", "Phantom Tree by the western capital gate"],
-      ["Golden Seed ×2", "Phantom Tree, northwestern outskirts"],
-      ["Golden Seed", "Tree Spirit at the western camp, south of Outer Wall Phantom Tree"],
-      ["Golden Seed", "Tree Spirit north of the Avenue Balcony"],
-      ["Golden Seed", "Phantom Tree southeast of West Capital Rampart (gargoyle)"],
-      ["Viridian Amber Medallion +1", "Margit rematch, Outer Wall Battleground"]
     ] }
 ]},
 
 { zone: "Subterranean Shunning-Grounds", dlc: false, places: [
   { name: "Subterranean Shunning-Grounds", dungeon: true,
-    bosses: [["Mohg, the Omen", "Cathedral of the Forsaken"]],
-    keyItems: [["Erdtree's Favor +1", "Cathedral of the Forsaken (after Mohg, the Omen)"]] },
+    bosses: [["Mohg, the Omen", "Cathedral of the Forsaken"]] },
   { name: "Leyndell Catacombs", dungeon: true,
-    bosses: [["Esgar, Priest of Blood", "Leyndell Catacombs"]],
-    keyItems: [
-      ["Haligdrake Talisman +1", "Leyndell Catacombs, behind an illusory wall"],
-      ["Crucible Scale Talisman", "Leyndell Catacombs, flame-trap room"],
-      ["Lord of Blood's Exultation", "Esgar, Priest of Blood drop"]
-    ] }
+    bosses: [["Esgar, Priest of Blood", "Leyndell Catacombs"]] }
 ]},
 
 { zone: "Mountaintops of the Giants", dlc: false, places: [
   { name: "Giants' Mountaintop Catacombs", dungeon: true,
-    bosses: [["Ulcerated Tree Spirit", "Giants' Mountaintop Catacombs"]],
-    keyItems: [["Golden Seed", "Giants' Mountaintop Catacombs — Ulcerated Tree Spirit"]] },
+    bosses: [["Ulcerated Tree Spirit", "Giants' Mountaintop Catacombs"]] },
   { name: "Giant-Conquering Hero's Grave", dungeon: true,
-    bosses: [["Ancient Hero of Zamor", "Giant-Conquering Hero's Grave"]], keyItems: [] },
+    bosses: [["Ancient Hero of Zamor", "Giant-Conquering Hero's Grave"]] },
   { name: "Spiritcaller's Cave", dungeon: true,
-    bosses: [["Godskin Apostle & Godskin Noble", "Spiritcaller's Cave"]],
-    keyItems: [["Godskin Swaddling Cloth", "Spiritcaller's Cave — Godskin duo"]] },
+    bosses: [["Godskin Apostle & Godskin Noble", "Spiritcaller's Cave"]] },
   { name: "Castle Sol", dungeon: true,
-    bosses: [["Commander Niall", "Castle Sol"]],
-    keyItems: [["Cerulean Amber Medallion +1", "Castle Sol corpse"]] },
+    bosses: [["Commander Niall", "Castle Sol"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Black Blade Kindred", "Forbidden Lands, Grand Lift of Rold"],
@@ -887,56 +679,30 @@ const DATA = [
       ["Borealis, the Freezing Fog", "Freezing Lake"],
       ["Death Rite Bird", "west of Castle Sol (night)"],
       ["Fire Giant", "Flame Peak"]
-    ],
-    keyItems: [
-      ["Map: Mountaintops, West", "stele near the Zamor Ruins"],
-      ["Map: Mountaintops, East", "stele on the eastern road"],
-      ["Golden Seed", "northeast of the Minor Erdtree"],
-      ["Golden Seed", "Flame Peak, near the Snow Trolls"],
-      ["Golden Seed", "Forbidden Lands, path to the Grand Lift of Rold"],
-      ["Sacred Tear", "Church of Repose"],
-      ["Sacred Tear", "First Church of Marika"],
-      ["Flamedrake Talisman +1", "corpse near the Grand Lift of Rold approach"]
     ] }
 ]},
 
 { zone: "Consecrated Snowfield", dlc: false, places: [
   { name: "Hidden Path to the Haligtree", dungeon: true,
-    bosses: [],
-    keyItems: [
-      ["Silver Scarab", "Hidden Path to the Haligtree, invisible bridge chest"],
-      ["Spelldrake Talisman +2", "Hidden Path to the Haligtree, near the Stray Mimic Tear"]
-    ] },
+    bosses: [] },
   { name: "Consecrated Snowfield Catacombs", dungeon: true,
-    bosses: [["Putrid Grave Warden Duelist", "Consecrated Snowfield Catacombs"]], keyItems: [] },
+    bosses: [["Putrid Grave Warden Duelist", "Consecrated Snowfield Catacombs"]] },
   { name: "Cave of the Forlorn", dungeon: true,
-    bosses: [["Misbegotten Crusader", "Cave of the Forlorn"]], keyItems: [] },
+    bosses: [["Misbegotten Crusader", "Cave of the Forlorn"]] },
   { name: "Yelough Anix Tunnel", dungeon: true,
-    bosses: [["Astel, Stars of Darkness", "Yelough Anix Tunnel"]], keyItems: [] },
+    bosses: [["Astel, Stars of Darkness", "Yelough Anix Tunnel"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Putrid Avatar", "Minor Erdtree"],
       ["Death Rite Bird", "Ordina, Liturgical Town (night)"],
       ["Night's Cavalry Duo", "trade caravan (night)"],
       ["Great Wyrm Theodorix", "frozen river ravine"]
-    ],
-    keyItems: [
-      ["Golden Seed", "southwest of Ordina, Liturgical Town"],
-      ["Golden Seed", "Phantom Tree on the high rock between graces"],
-      ["Stalwart Horn Charm +1", "corpse near Yelough Anix Tunnel"],
-      ["Graven-Mass Talisman", "Albinauric Rise puzzle"],
-      ["Primal Glintstone Blade", "Stargazer Ruins jellyfish puzzle"]
     ] }
 ]},
 
 { zone: "Mohgwyn Palace", dlc: false, places: [
   { name: "Mohgwyn Palace", dungeon: true,
-    bosses: [["Mohg, Lord of Blood", "Mohgwyn Dynasty Mausoleum"]],
-    keyItems: [
-      ["Map: Mohgwyn Palace", "stele at the Palace Approach Ledge-Road"],
-      ["Golden Seed", "blood-lake island (or corpse near Dynasty Mausoleum Midpoint)"],
-      ["Haligdrake Talisman +2", "Mohgwyn Palace corpse"]
-    ] }
+    bosses: [["Mohg, Lord of Blood", "Mohgwyn Dynasty Mausoleum"]] }
 ]},
 
 { zone: "Miquella's Haligtree", dlc: false, places: [
@@ -944,15 +710,6 @@ const DATA = [
     bosses: [
       ["Loretta, Knight of the Haligtree", "Miquella's Haligtree"],
       ["Malenia, Blade of Miquella", "Elphael, Brace of the Haligtree"]
-    ],
-    keyItems: [
-      ["Golden Seed", "Elphael — Ulcerated Tree Spirit drop"],
-      ["Viridian Amber Medallion +2", "near Haligtree Town Plaza"],
-      ["Marika's Soreseal", "Elphael, imp-statue room"],
-      ["Dragoncrest Greatshield Talisman", "Drainage Channel, through the roof via roots"],
-      ["Pearldrake Talisman +2", "Haligtree Town corpse"],
-      ["Rotten Winged Sword Insignia", "Millicent's quest — side with her"],
-      ["Millicent's Prosthesis", "Millicent's quest — side against her"]
     ] }
 ]},
 
@@ -962,14 +719,6 @@ const DATA = [
       ["Godskin Duo", "Dragon Temple"],
       ["Beast Clergyman / Maliketh, the Black Blade", "Beside the Great Bridge"],
       ["Dragonlord Placidusax", "Beyond the fallen ruins (optional)"]
-    ],
-    keyItems: [
-      ["Golden Seed", "Phantom Tree south of the fountain plaza"],
-      ["Golden Seed", "Phantom Tree southeast of the Dragon Temple Rooftop"],
-      ["Dragoncrest Shield Talisman +2", "floating rock near the Dragon Temple Lift"],
-      ["Boltdrake Talisman +2", "Dragon Temple Rooftop, near the Crucible Knight"],
-      ["Old Lord's Talisman", "chest across the bridge from Maliketh's arena"],
-      ["Shard of Alexander", "Alexander's quest finale"]
     ] }
 ]},
 
@@ -979,57 +728,31 @@ const DATA = [
       ["Sir Gideon Ofnir, the All-Knowing", "Erdtree Sanctuary"],
       ["Godfrey, First Elden Lord / Hoarah Loux", "Elden Throne"],
       ["Radagon of the Golden Order / Elden Beast", "Fractured Marika"]
-    ],
-    keyItems: [
-      ["Crimson Amber Medallion +2", "down the manhole south of the grace"],
-      ["Erdtree's Favor +2", "courtyard with three Lesser Ulcerated Tree Spirits"]
     ] }
 ]},
 
-{ zone: "Roundtable Hold & Trades", dlc: false, places: [
-  { name: "Roundtable Hold", dungeon: false,
-    bosses: [],
-    keyItems: [
-      ["Furled Finger's Trick-Mirror", "Twin Maiden Husks"],
-      ["Host's Trick-Mirror", "Twin Maiden Husks"],
-      ["Ancestral Spirit's Horn", "Enia — Remembrance of the Regal Ancestor"],
-      ["Sacrificial Twig", "from Fia, during Rogier's quest"],
-      ["Enraged Divine Beast", "Enia — Remembrance of the Dancing Lion (DLC)"]
-    ] }
-]},
+{ zone: "Roundtable Hold & Trades", dlc: false, places: []},
 
-// ---------------------- SHADOW OF THE ERDTREE ----------------------
 { zone: "Gravesite Plain", dlc: true, places: [
   { name: "Belurat Gaol", dungeon: true,
-    bosses: [["Demi-Human Swordmaster Onze", "Belurat Gaol"]], keyItems: [] },
+    bosses: [["Demi-Human Swordmaster Onze", "Belurat Gaol"]] },
   { name: "Fog Rift Catacombs", dungeon: true,
-    bosses: [["Death Knight", "Fog Rift Catacombs"]],
-    keyItems: [["Crimson Amber Medallion +3", "Fog Rift Catacombs — Death Knight"]] },
+    bosses: [["Death Knight", "Fog Rift Catacombs"]] },
   { name: "Rivermouth Cave", dungeon: true,
-    bosses: [["Chief Bloodfiend", "Rivermouth Cave"]], keyItems: [] },
+    bosses: [["Chief Bloodfiend", "Rivermouth Cave"]] },
   { name: "Dragon's Pit", dungeon: true,
-    bosses: [["Ancient Dragon-Man", "Dragon's Pit"]], keyItems: [] },
-  { name: "Ruined Forge Lava Intake", dungeon: true, bosses: [], keyItems: [] },
+    bosses: [["Ancient Dragon-Man", "Dragon's Pit"]] },
+  { name: "Ruined Forge Lava Intake", dungeon: true,
+    bosses: [] },
   { name: "Western Nameless Mausoleum", dungeon: true,
-    bosses: [["Blackgaol Knight", "Western Nameless Mausoleum"]], keyItems: [] },
+    bosses: [["Blackgaol Knight", "Western Nameless Mausoleum"]] },
   { name: "Open World", dungeon: false,
-    bosses: [["Ghostflame Dragon", "Gravesite Plain (field)"]],
-    keyItems: [
-      ["Map: Gravesite Plain", "stele west of the Three-Path Cross"],
-      ["Blade of Mercy", "Scorched Ruins chest"],
-      ["Two-Headed Turtle Talisman", "waterfall cave east of Rivermouth Cave"],
-      ["Sharpshot Talisman", "Albinauric's Shack (verify)"]
-    ] }
+    bosses: [["Ghostflame Dragon", "Gravesite Plain (field)"]] }
 ]},
 
 { zone: "Belurat, Tower Settlement", dlc: true, places: [
   { name: "Belurat, Tower Settlement (legacy dungeon)", dungeon: true, legacy: true,
-    bosses: [["Divine Beast Dancing Lion", "Belurat, Tower Settlement"]],
-    keyItems: [
-      ["Dried Bouquet", "secret storeroom"],
-      ["Immunizing Horn Charm +2", "Lesser Ulcerated Tree Spirit"],
-      ["Crusade Insignia", "Fire Knight Queelign invasion (his quest)"]
-    ] }
+    bosses: [["Divine Beast Dancing Lion", "Belurat, Tower Settlement"]] }
 ]},
 
 { zone: "Castle Ensis", dlc: true, places: [
@@ -1037,60 +760,39 @@ const DATA = [
     bosses: [
       ["Moonrithyll, Carian Knight", "Castle Ensis bridge"],
       ["Rellana, Twin Moon Knight", "Castle Ensis"]
-    ],
-    keyItems: [
-      ["Rellana's Cameo", "altar behind Moonrithyll"],
-      ["Spelldrake Talisman +3", "storeroom under the front bridge"],
-      ["Flamedrake Talisman +3", "chest above the cages (verify)"]
     ] }
 ]},
 
 { zone: "Cerulean Coast", dlc: true, places: [
   { name: "Stone Coffin Fissure", dungeon: true,
-    bosses: [["Putrescent Knight", "Stone Coffin Fissure"]], keyItems: [] },
+    bosses: [["Putrescent Knight", "Stone Coffin Fissure"]] },
   { name: "Eastern Nameless Mausoleum", dungeon: true,
-    bosses: [["Dancer of Ranah", "Eastern Nameless Mausoleum"]], keyItems: [] },
+    bosses: [["Dancer of Ranah", "Eastern Nameless Mausoleum"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Ghostflame Dragon", "Cerulean Coast (field)"],
       ["Demi-Human Queen Marigga", "Cerulean Coast (field)"]
-    ],
-    keyItems: [
-      ["Map: Southern Shore", "stele on the Cerulean Coast"],
-      ["Outer God Heirloom", "Prospect Town chest"],
-      ["St. Trina's Smile", "Thiollier — St. Trina's quest"]
     ] }
 ]},
 
 { zone: "Charo's Hidden Grave", dlc: true, places: [
   { name: "Lamenter's Gaol", dungeon: true,
-    bosses: [["Lamenter", "Lamenter's Gaol"]],
-    keyItems: [["Clarifying Horn Charm +2", "Lamenter's Gaol, corpse past the rat cave"]] },
+    bosses: [["Lamenter", "Lamenter's Gaol"]] },
   { name: "Open World", dungeon: false,
-    bosses: [["Ghostflame Dragon", "Charo's Hidden Grave (field)"]],
-    keyItems: [] }
+    bosses: [["Ghostflame Dragon", "Charo's Hidden Grave (field)"]] }
 ]},
 
 { zone: "Scadu Altus", dlc: true, places: [
   { name: "Bonny Gaol", dungeon: true,
-    bosses: [["Curseblade Labirith", "Bonny Gaol"]],
-    keyItems: [["Stalwart Horn Charm +2", "Bonny Gaol, room after the Inner Jar"]] },
+    bosses: [["Curseblade Labirith", "Bonny Gaol"]] },
   { name: "Ruined Forge of Starfall Past", dungeon: true,
-    bosses: [],
-    keyItems: [["Smithing Talisman", "Ruined Forge of Starfall Past, upper storeroom"]] },
+    bosses: [] },
   { name: "Fort of Reprimand", dungeon: true,
-    bosses: [["Black Knight Edredd", "Fort of Reprimand"]], keyItems: [] },
+    bosses: [["Black Knight Edredd", "Fort of Reprimand"]] },
   { name: "Cathedral of Manus Metyr", dungeon: true,
-    bosses: [["Metyr, Mother of Fingers", "beneath Cathedral of Manus Metyr"]],
-    keyItems: [["Beloved Stardust", "Count Ymir's quest"]] },
+    bosses: [["Metyr, Mother of Fingers", "beneath Cathedral of Manus Metyr"]] },
   { name: "Open World", dungeon: false,
-    bosses: [["Rakshasa", "Eastern Scadu Altus"]],
-    keyItems: [
-      ["Map: Scadu Altus", "stele on the Moorth highway"],
-      ["Shattered Stone Talisman", "Moorth Ruins rooftop"],
-      ["Arrow's Soaring Sting Talisman", "Fog Rift Fort tower chest"],
-      ["Blessed Blue Dew Talisman", "Church of Benediction, Marika statue"]
-    ] }
+    bosses: [["Rakshasa", "Eastern Scadu Altus"]] }
 ]},
 
 { zone: "Shadow Keep", dlc: true, places: [
@@ -1098,75 +800,46 @@ const DATA = [
     bosses: [
       ["Golden Hippopotamus", "Shadow Keep entrance"],
       ["Messmer the Impaler", "Dark Chamber"]
-    ],
-    keyItems: [
-      ["Talisman of Lord's Bestowal", "near the golden sealing tree"],
-      ["Lacerating Crossed-Tree", "Leda's quest — side with Leda against the Hornsent"],
-      ["Retaliatory Crossed-Tree", "Leda's quest — side with Ansbach"]
     ] },
   { name: "Church District", dungeon: true,
-    bosses: [["Divine Bird Warrior Ornis", "Church District"]], keyItems: [] },
+    bosses: [["Divine Bird Warrior Ornis", "Church District"]] },
   { name: "Specimen Storehouse", dungeon: true,
-    bosses: [],
-    keyItems: [
-      ["Boltdrake Talisman +3", "Specimen Storehouse dining area"],
-      ["Pearldrake Talisman +3", "Specimen Storehouse, on the great statue"]
-    ] },
+    bosses: [] },
   { name: "Darklight Catacombs", dungeon: true,
-    bosses: [["Jori, Elder Inquisitor", "Darklight Catacombs"]],
-    keyItems: [["Viridian Amber Medallion +3", "Darklight Catacombs ledge"]] },
+    bosses: [["Jori, Elder Inquisitor", "Darklight Catacombs"]] },
   { name: "Open World", dungeon: false,
-    bosses: [["Commander Gaius", "west of Shadow Keep"]],
-    keyItems: [] }
+    bosses: [["Commander Gaius", "west of Shadow Keep"]] }
 ]},
 
 { zone: "Scaduview & Hinterland", dlc: true, places: [
   { name: "Finger Ruins of Rhia", dungeon: true,
-    bosses: [],
-    keyItems: [["Crimson Seed Talisman +1", "Finger Ruins of Rhia — ring the bell"]] },
+    bosses: [] },
   { name: "Finger Ruins of Dheo", dungeon: true,
-    bosses: [],
-    keyItems: [["Cerulean Seed Talisman +1", "Finger Ruins of Dheo — ring the bell"]] },
-  { name: "Finger Ruins of Miyr", dungeon: true, bosses: [], keyItems: [] },
+    bosses: [] },
+  { name: "Finger Ruins of Miyr", dungeon: true,
+    bosses: [] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Scadutree Avatar", "Scaduview, before the sealing tree"],
       ["Fallingstar Beast", "Scaduview crater"]
-    ],
-    keyItems: [["Golden Braid", "Shaman Village, inside the tree trunk"]] }
+    ] }
 ]},
 
 { zone: "Abyssal Woods", dlc: true, places: [
   { name: "Midra's Manse", dungeon: true,
-    bosses: [["Midra, Lord of Frenzied Flame", "Midra's Manse"]], keyItems: [] },
-  { name: "Open World", dungeon: false,
-    bosses: [],
-    keyItems: [
-      ["Map: Abyss", "stele in the Abyssal Woods"],
-      ["Aged One's Exultation", "Winter Lantern near the Abandoned Church"],
-      ["Ailment Talisman", "Abandoned Ailing Village, on the wooden bridge"]
-    ] }
+    bosses: [["Midra, Lord of Frenzied Flame", "Midra's Manse"]] }
 ]},
 
 { zone: "Ancient Ruins of Rauh", dlc: true, places: [
   { name: "Scorpion River Catacombs", dungeon: true,
-    bosses: [["Death Knight", "Scorpion River Catacombs"]],
-    keyItems: [["Cerulean Amber Medallion +3", "Scorpion River Catacombs — Death Knight"]] },
-  { name: "Taylew's Ruined Forge", dungeon: true, bosses: [], keyItems: [] },
+    bosses: [["Death Knight", "Scorpion River Catacombs"]] },
+  { name: "Taylew's Ruined Forge", dungeon: true,
+    bosses: [] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Rugalea the Great Red Bear", "Rauh Base"],
       ["Divine Beast Dancing Lion", "Ancient Ruins of Rauh (repeat)"],
       ["Romina, Saint of the Bud", "Church of the Bud"]
-    ],
-    keyItems: [
-      ["Map: Rauh Ruins", "stele in Rauh Base"],
-      ["Mottled Necklace +2", "top of the stairs past the spiritspring"],
-      ["Pearl Shield Talisman", "soldier camp near Taylew's Ruined Forge"],
-      ["Verdigris Discus", "statue in the ruins"],
-      ["Fine Crucible Feather Talisman", "tree branch over the cliffs (verify)"],
-      ["Two-Handed Sword Talisman", "Temple Town Ruins chest"],
-      ["Talisman of All Crucibles", "Grand Stairway floating platform (verify)"]
     ] }
 ]},
 
@@ -1177,8 +850,7 @@ const DATA = [
       ["Jagged Peak Drake Duo", "mid-ascent"],
       ["Ancient Dragon Senessax", "Jagged Peak summit"],
       ["Bayle the Dread", "Jagged Peak summit"]
-    ],
-    keyItems: [["Talisman of the Dread", "Elder's Hovel (verify)"]] }
+    ] }
 ]},
 
 { zone: "Enir-Ilim", dlc: true, places: [
@@ -1186,9 +858,9 @@ const DATA = [
     bosses: [
       ["Needle Knight Leda & Allies", "Enir-Ilim"],
       ["Promised Consort Radahn", "Gate of Divinity"]
-    ],
-    keyItems: [] }
+    ] }
 ]}
+
 ];
 
 // ============================================================================
@@ -1231,347 +903,6 @@ const ZONE_ORDER = [
   "Scaduview & Hinterland", "Abyssal Woods", "Ancient Ruins of Rauh",
   "Jagged Peak", "Enir-Ilim"
 ];
-
-// ============================================================================
-// GRACES — sites of grace per place, keyed "Zone::Place name".
-// Merged into the place blocks at build time (category "Graces").
-// Names from the Fextralife wiki. Leyndell's graces are tracked pre-burn;
-// the Ashen Capital zone only lists the two new endgame graces.
-// ============================================================================
-const GRACES = {
-  // ---- Limgrave ----
-  "Limgrave::Groveside Cave": ["Groveside Cave"],
-  "Limgrave::Coastal Cave": ["Coastal Cave"],
-  "Limgrave::Murkwater Cave": ["Murkwater Cave"],
-  "Limgrave::Highroad Cave": ["Highroad Cave"],
-  "Limgrave::Limgrave Tunnels": ["Limgrave Tunnels"],
-  "Limgrave::Stormfoot Catacombs": ["Stormfoot Catacombs"],
-  "Limgrave::Murkwater Catacombs": ["Murkwater Catacombs"],
-  "Limgrave::Deathtouched Catacombs": ["Deathtouched Catacombs"],
-  "Limgrave::Waypoint Ruins Cellar": ["Waypoint Ruins Cellar"],
-  "Limgrave::Open World": [
-    "The First Step", "Church of Elleh", "Gatefront", "Artist's Shack",
-    "Third Church of Marika", "Fort Haight West", "Agheel Lake South",
-    "Agheel Lake North", "Church of Dragon Communion", "Seaside Ruins",
-    "Mistwood Outskirts", "Murkwater Coast", "Summonwater Village Outskirts",
-    "Cave of Knowledge", "Stranded Graveyard", "Stormhill Shack",
-    "Castleward Tunnel", "Margit, the Fell Omen", "Warmaster's Shack",
-    "Saintsbridge", "Limgrave Tower Bridge", "Divine Tower of Limgrave"
-  ],
-  // ---- Weeping Peninsula ----
-  "Weeping Peninsula::Tombsward Cave": ["Tombsward Cave"],
-  "Weeping Peninsula::Earthbore Cave": ["Earthbore Cave"],
-  "Weeping Peninsula::Morne Tunnel": ["Morne Tunnel"],
-  "Weeping Peninsula::Impaler's Catacombs": ["Impaler's Catacombs"],
-  "Weeping Peninsula::Tombsward Catacombs": ["Tombsward Catacombs"],
-  "Weeping Peninsula::Castle Morne": [
-    "Castle Morne Rampart", "Castle Morne Lift", "Behind the Castle",
-    "Beside the Rampart Gaol", "Morne Moangrave"
-  ],
-  "Weeping Peninsula::Open World": [
-    "Church of Pilgrimage", "Tombsward", "South of the Lookout Tower",
-    "Ailing Village Outskirts", "Beside the Crater-Pocked Glade",
-    "Isolated Merchant's Shack", "Fourth Church of Marika", "Bridge of Sacrifice"
-  ],
-  // ---- Stormveil ----
-  "Stormveil Castle::Stormveil Castle (legacy dungeon)": [
-    "Stormveil Main Gate", "Gateside Chamber", "Stormveil Cliffside",
-    "Rampart Tower", "Liftside Chamber", "Secluded Cell", "Godrick the Grafted"
-  ],
-  // ---- Liurnia ----
-  "Liurnia of the Lakes::Stillwater Cave": ["Stillwater Cave"],
-  "Liurnia of the Lakes::Lakeside Crystal Cave": ["Lakeside Crystal Cave"],
-  "Liurnia of the Lakes::Academy Crystal Cave": ["Academy Crystal Cave"],
-  "Liurnia of the Lakes::Raya Lucaria Crystal Tunnel": ["Raya Lucaria Crystal Tunnel"],
-  "Liurnia of the Lakes::Road's End Catacombs": ["Road's End Catacombs"],
-  "Liurnia of the Lakes::Black Knife Catacombs": ["Black Knife Catacombs"],
-  "Liurnia of the Lakes::Cliffbottom Catacombs": ["Cliffbottom Catacombs"],
-  "Liurnia of the Lakes::Caria Manor": [
-    "Main Caria Manor Gate", "Manor Upper Level", "Manor Lower Level",
-    "Royal Moongazing Grounds"
-  ],
-  "Liurnia of the Lakes::Ruin-Strewn Precipice": [
-    "Ruin-Strewn Precipice", "Ruin-Strewn Precipice Overlook", "Magma Wyrm Makar"
-  ],
-  "Liurnia of the Lakes::Open World": [
-    "Lake-Facing Cliffs", "Liurnia Lake Shore", "Laskyar Ruins", "Scenic Isle",
-    "Academy Gate Town", "South Raya Lucaria Gate", "Main Academy Gate",
-    "Liurnia Highway South", "Liurnia Highway North", "Gate Town Bridge",
-    "Artist's Shack", "Eastern Liurnia Lake Shore", "Jarburg", "Ranni's Chamber",
-    "Eastern Tableland", "Church of Vows", "Ruined Labyrinth", "Mausoleum Compound",
-    "Slumbering Wolf's Shack", "Boilprawn Shack", "Fallen Ruins of the Lake",
-    "Folly on the Lake", "Village of the Albinaurics", "Converted Tower",
-    "Revenger's Shack", "Temple Quarter", "Crystalline Woods",
-    "Foot of the Four Belfries", "The Four Belfries", "Sorcerer's Isle",
-    "East Gate Bridge Trestle", "Gate Town North", "Northern Liurnia Lake Shore",
-    "Road to the Manor", "Ranni's Rise", "Behind Caria Manor", "The Ravine",
-    "Ravine-Veiled Village", "Study Hall Entrance", "Liurnia Tower Bridge",
-    "Divine Tower of Liurnia", "East Raya Lucaria Gate", "Bellum Church",
-    "Grand Lift of Dectus", "Frenzied Flame Village Outskirts",
-    "Church of Inhibition"
-  ],
-  // ---- Moonlight Altar ----
-  "Moonlight Altar::Open World": [
-    "Moonlight Altar", "Cathedral of Manus Celes", "Altar South"
-  ],
-  // ---- Academy ----
-  "Academy of Raya Lucaria::Academy of Raya Lucaria (legacy dungeon)": [
-    "Church of the Cuckoo", "Schoolhouse Classroom", "Debate Parlor",
-    "Raya Lucaria Grand Library"
-  ],
-  // ---- Caelid ----
-  "Caelid::Gael Tunnel": ["Gael Tunnel", "Rear Gael Tunnel Entrance"],
-  "Caelid::Sellia Crystal Tunnel": ["Sellia Crystal Tunnel"],
-  "Caelid::Abandoned Cave": ["Abandoned Cave"],
-  "Caelid::Gaol Cave": ["Gaol Cave"],
-  "Caelid::Minor Erdtree Catacombs": ["Minor Erdtree Catacombs"],
-  "Caelid::Caelid Catacombs": ["Caelid Catacombs"],
-  "Caelid::War-Dead Catacombs": ["War-Dead Catacombs"],
-  "Caelid::Redmane Castle": [
-    "Chamber Outside the Plaza", "Redmane Castle Plaza", "Starscourge Radahn"
-  ],
-  "Caelid::Open World": [
-    "Smoldering Church", "Rotview Balcony", "Caelem Ruins", "Fort Gael North",
-    "Smoldering Wall", "Caelid Highway South", "Cathedral of Dragon Communion",
-    "Southern Aeonia Swamp Bank", "Sellia Backstreets", "Sellia Under-Stair",
-    "Chair-Crypt of Sellia", "Church of the Plague", "Impassable Greatbridge",
-    "Aeonia Swamp Shore", "Astray from Caelid Highway North", "Heart of Aeonia",
-    "Inner Aeonia"
-  ],
-  // ---- Dragonbarrow ----
-  "Greyoll's Dragonbarrow::Dragonbarrow Cave": ["Dragonbarrow Cave"],
-  "Greyoll's Dragonbarrow::Sellia Hideaway": ["Sellia Hideaway"],
-  "Greyoll's Dragonbarrow::Divine Tower of Caelid": [
-    "Divine Tower of Caelid: Center", "Divine Tower of Caelid: Basement"
-  ],
-  "Greyoll's Dragonbarrow::Fort Faroth": ["Fort Faroth"],
-  "Greyoll's Dragonbarrow::Open World": [
-    "Dragonbarrow West", "Isolated Merchant's Shack", "Dragonbarrow Fork",
-    "Lenne's Rise", "Farum Greatbridge", "Bestial Sanctum", "Isolated Divine Tower"
-  ],
-  // ---- Siofra ----
-  "Siofra River::Siofra River": [
-    "Siofra River Well Depths", "Siofra River Bank", "Worshippers' Woods",
-    "Below the Well", "Deep Siofra Well"
-  ],
-  // ---- Nokron ----
-  "Nokron & Siofra Aqueduct::Nokron, Eternal City": [
-    "Nokron, Eternal City", "Mimic Tear", "Ancestral Woods",
-    "Night's Sacred Ground", "Great Waterfall Basin"
-  ],
-  "Nokron & Siofra Aqueduct::Siofra Aqueduct": ["Aqueduct-Facing Cliffs"],
-  // ---- Ainsel ----
-  "Ainsel River::Ainsel River": [
-    "Ainsel River Well Depths", "Ainsel River Sluice Gate",
-    "Ainsel River Downstream", "Dragonkin Soldier of Nokstella", "Ainsel River Main"
-  ],
-  // ---- Nokstella & Lake of Rot ----
-  "Nokstella & Lake of Rot::Nokstella, Eternal City": [
-    "Nokstella, Eternal City", "Nokstella Waterfall Basin"
-  ],
-  "Nokstella & Lake of Rot::Lake of Rot": ["Lake of Rot Shoreside"],
-  "Nokstella & Lake of Rot::Grand Cloister": [
-    "Grand Cloister", "Astel, Naturalborn of the Void"
-  ],
-  // ---- Deeproot ----
-  "Deeproot Depths::Deeproot Depths": [
-    "Root-Facing Cliffs", "Great Waterfall Crest", "Deeproot Depths",
-    "The Nameless Eternal City", "Across the Roots", "Prince of Death's Throne"
-  ],
-  // ---- Altus ----
-  "Altus Plateau::Old Altus Tunnel": ["Old Altus Tunnel"],
-  "Altus Plateau::Altus Tunnel": ["Altus Tunnel"],
-  "Altus Plateau::Sage's Cave": ["Sage's Cave"],
-  "Altus Plateau::Perfumer's Grotto": ["Perfumer's Grotto"],
-  "Altus Plateau::Sainted Hero's Grave": ["Sainted Hero's Grave"],
-  "Altus Plateau::Shaded Castle": [
-    "Shaded Castle Ramparts", "Shaded Castle Inner Gate", "Castellan's Hall"
-  ],
-  "Altus Plateau::Open World": [
-    "Abandoned Coffin", "Erdtree-Gazing Hill", "Altus Plateau",
-    "Altus Highway Junction", "Forest-Spanning Greatbridge", "Bower of Bounty",
-    "Windmill Village", "Windmill Heights", "Road of Iniquity Side Path",
-    "Rampartside Path"
-  ],
-  // ---- Gelmir ----
-  "Mt. Gelmir::Seethewater Cave": ["Seethewater Cave"],
-  "Mt. Gelmir::Volcano Cave": ["Volcano Cave"],
-  "Mt. Gelmir::Wyndham Catacombs": ["Wyndham Catacombs"],
-  "Mt. Gelmir::Unsightly Catacombs": ["Unsightly Catacombs"],
-  "Mt. Gelmir::Gelmir Hero's Grave": ["Gelmir Hero's Grave"],
-  "Mt. Gelmir::Open World": [
-    "Bridge of Iniquity", "First Mt. Gelmir Campsite", "Ninth Mt. Gelmir Campsite",
-    "Road of Iniquity", "Seethewater River", "Seethewater Terminus",
-    "Craftsman's Shack", "Primeval Sorcerer Azur"
-  ],
-  // ---- Volcano Manor ----
-  "Volcano Manor::Volcano Manor (legacy dungeon)": [
-    "Volcano Manor", "Prison Town Church", "Temple of Eiglay", "Guest Hall",
-    "Audience Pathway", "Abductor Virgin", "Subterranean Inquisition Chamber",
-    "Rykard, Lord of Blasphemy"
-  ],
-  // ---- Leyndell ----
-  "Leyndell & Capital Outskirts::Auriza Hero's Grave": ["Auriza Hero's Grave"],
-  "Leyndell & Capital Outskirts::Auriza Side Tomb": ["Auriza Side Tomb"],
-  "Leyndell & Capital Outskirts::Sealed Tunnel": ["Sealed Tunnel"],
-  "Leyndell & Capital Outskirts::Divine Tower of West Altus": [
-    "Divine Tower of West Altus: Gate", "Divine Tower of West Altus"
-  ],
-  "Leyndell & Capital Outskirts::Leyndell, Royal Capital (legacy dungeon)": [
-    "Erdtree Sanctuary", "East Capital Rampart", "Lower Capital Church",
-    "Avenue Balcony", "West Capital Rampart", "Queen's Bedchamber",
-    "Fortified Manor, First Floor", "Divine Bridge", "Elden Throne"
-  ],
-  "Leyndell & Capital Outskirts::Open World": [
-    "Outer Wall Phantom Tree", "Minor Erdtree Church", "Outer Wall Battleground",
-    "Hermit Merchant's Shack", "Capital Rampart",
-    "Divine Tower of East Altus: Gate", "Divine Tower of East Altus"
-  ],
-  // ---- Shunning-Grounds ----
-  "Subterranean Shunning-Grounds::Subterranean Shunning-Grounds": [
-    "Underground Roadside", "Forsaken Depths", "Frenzied Flame Proscription",
-    "Cathedral of the Forsaken"
-  ],
-  "Subterranean Shunning-Grounds::Leyndell Catacombs": ["Leyndell Catacombs"],
-  // ---- Mountaintops ----
-  "Mountaintops of the Giants::Giants' Mountaintop Catacombs": ["Giants' Mountaintop Catacombs"],
-  "Mountaintops of the Giants::Giant-Conquering Hero's Grave": ["Giant-Conquering Hero's Grave"],
-  "Mountaintops of the Giants::Spiritcaller's Cave": ["Spiritcaller Cave"],
-  "Mountaintops of the Giants::Castle Sol": [
-    "Castle Sol Main Gate", "Church of the Eclipse", "Castle Sol Rooftop"
-  ],
-  "Mountaintops of the Giants::Open World": [
-    "Forbidden Lands", "Grand Lift of Rold", "Zamor Ruins",
-    "Ancient Snow Valley Ruins", "Freezing Lake", "First Church of Marika",
-    "Whiteridge Road", "Snow Valley Ruins Overlook", "Giants' Gravepost",
-    "Church of Repose", "Foot of the Forge", "Fire Giant", "Forge of the Giants"
-  ],
-  // ---- Snowfield ----
-  "Consecrated Snowfield::Hidden Path to the Haligtree": ["Hidden Path to the Haligtree"],
-  "Consecrated Snowfield::Consecrated Snowfield Catacombs": ["Consecrated Snowfield Catacombs"],
-  "Consecrated Snowfield::Cave of the Forlorn": ["Cave of the Forlorn"],
-  "Consecrated Snowfield::Yelough Anix Tunnel": ["Yelough Anix Tunnel"],
-  "Consecrated Snowfield::Open World": [
-    "Consecrated Snowfield", "Inner Consecrated Snowfield",
-    "Ordina, Liturgical Town", "Apostate Derelict"
-  ],
-  // ---- Mohgwyn ----
-  "Mohgwyn Palace::Mohgwyn Palace": [
-    "Palace Approach Ledge-Road", "Dynasty Mausoleum Entrance",
-    "Dynasty Mausoleum Midpoint", "Cocoon of the Empyrean"
-  ],
-  // ---- Haligtree ----
-  "Miquella's Haligtree::Miquella's Haligtree / Elphael (legacy dungeon)": [
-    "Haligtree Canopy", "Haligtree Town", "Haligtree Town Plaza",
-    "Haligtree Promenade", "Prayer Room", "Elphael Inner Wall",
-    "Drainage Channel", "Haligtree Roots", "Malenia, Goddess of Rot"
-  ],
-  // ---- Farum Azula ----
-  "Crumbling Farum Azula::Crumbling Farum Azula (legacy dungeon)": [
-    "Crumbling Beast Grave", "Crumbling Beast Grave Depths",
-    "Tempest-Facing Balcony", "Dragon Temple", "Dragon Temple Transept",
-    "Dragon Temple Altar", "Dragon Temple Lift", "Dragon Temple Rooftop",
-    "Beside the Great Bridge", "Dragonlord Placidusax", "Maliketh, the Black Blade"
-  ],
-  // ---- Ashen Capital ----
-  "Leyndell, Ashen Capital & Endgame::Leyndell, Ashen Capital": [
-    "Leyndell, Capital of Ash", "Fractured Marika"
-  ],
-  // ---- Roundtable ----
-  "Roundtable Hold & Trades::Roundtable Hold": ["Table of Lost Grace"],
-
-  // ---- DLC: Gravesite Plain ----
-  "Gravesite Plain::Belurat Gaol": ["Belurat Gaol"],
-  "Gravesite Plain::Fog Rift Catacombs": ["Fog Rift Catacombs"],
-  "Gravesite Plain::Rivermouth Cave": ["Rivermouth Cave"],
-  "Gravesite Plain::Dragon's Pit": ["Dragon's Pit", "Dragon's Pit Terminus"],
-  "Gravesite Plain::Ruined Forge Lava Intake": ["Ruined Forge Lava Intake"],
-  "Gravesite Plain::Open World": [
-    "Gravesite Plain", "Scorched Ruins", "Three-Path Cross", "Greatbridge North",
-    "Main Gate Cross", "Cliffroad Terminus", "Castle Front", "Pillar Path Cross",
-    "Pillar Path Waypoint", "Ellac River Cave", "Ellac River Downstream"
-  ],
-  // ---- DLC: Belurat ----
-  "Belurat, Tower Settlement::Belurat, Tower Settlement (legacy dungeon)": [
-    "Belurat, Tower Settlement", "Small Private Altar", "Stagefront",
-    "Theatre of the Divine Beast"
-  ],
-  // ---- DLC: Castle Ensis ----
-  "Castle Ensis::Castle Ensis (legacy dungeon)": [
-    "Castle Ensis Checkpoint", "Castle-Lord's Chamber", "Ensis Moongazing Grounds"
-  ],
-  // ---- DLC: Cerulean Coast ----
-  "Cerulean Coast::Stone Coffin Fissure": [
-    "Stone Coffin Fissure", "Fissure Cross", "Fissure Waypoint", "Fissure Depths",
-    "Garden of Deep Purple"
-  ],
-  "Cerulean Coast::Open World": [
-    "Cerulean Coast", "Cerulean Coast West", "Cerulean Coast Cross", "The Fissure"
-  ],
-  // ---- DLC: Charo's ----
-  "Charo's Hidden Grave::Lamenter's Gaol": ["Lamenter's Gaol"],
-  "Charo's Hidden Grave::Open World": ["Charo's Hidden Grave"],
-  // ---- DLC: Scadu Altus ----
-  "Scadu Altus::Bonny Gaol": ["Bonny Gaol"],
-  "Scadu Altus::Ruined Forge of Starfall Past": ["Ruined Forge of Starfall Past"],
-  "Scadu Altus::Fort of Reprimand": ["Fort of Reprimand", "Behind the Fort of Reprimand"],
-  "Scadu Altus::Cathedral of Manus Metyr": [
-    "Cathedral of Manus Metyr", "Finger Birthing Grounds"
-  ],
-  "Scadu Altus::Open World": [
-    "Highroad Cross", "Scadu Altus, West", "Moorth Ruins", "Moorth Highway South",
-    "Scaduview Cross", "Bonny Village", "Bridge Leading to the Village",
-    "Church District Highroad", "Castle Watering Hole",
-    "Recluses' River Upstream", "Recluses' River Downstream"
-  ],
-  // ---- DLC: Shadow Keep ----
-  "Shadow Keep::Shadow Keep (legacy dungeon)": [
-    "Shadow Keep Main Gate", "Main Gate Plaza"
-  ],
-  "Shadow Keep::Church District": [
-    "Church District Entrance", "Sunken Chapel", "Tree-Worship Passage",
-    "Tree-Worship Sanctum"
-  ],
-  "Shadow Keep::Specimen Storehouse": [
-    "Storehouse, First Floor", "Storehouse, Fourth Floor", "Storehouse, Seventh Floor",
-    "Dark Chamber Entrance", "Storehouse, Back Section", "Storehouse, Loft",
-    "West Rampart", "Messmer's Dark Chamber"
-  ],
-  "Shadow Keep::Darklight Catacombs": ["Darklight Catacombs"],
-  // ---- DLC: Scaduview ----
-  "Scaduview & Hinterland::Finger Ruins of Rhia": ["Finger Ruins of Rhia"],
-  "Scaduview & Hinterland::Open World": [
-    "Scaduview", "Shadow Keep, Back Gate", "Scadutree Base", "Hinterland",
-    "Hinterland Bridge", "Fingerstone Hill"
-  ],
-  // ---- DLC: Abyssal Woods ----
-  "Abyssal Woods::Midra's Manse": [
-    "Manse Hall", "Midra's Library", "Second Floor Chamber", "Discussion Chamber"
-  ],
-  "Abyssal Woods::Open World": [
-    "Forsaken Graveyard", "Woodland Trail", "Church Ruins", "Divided Fall",
-    "Abyssal Woods"
-  ],
-  // ---- DLC: Rauh ----
-  "Ancient Ruins of Rauh::Scorpion River Catacombs": ["Scorpion River Catacombs"],
-  "Ancient Ruins of Rauh::Taylew's Ruined Forge": ["Taylew's Ruined Forge"],
-  "Ancient Ruins of Rauh::Open World": [
-    "Viaduct Minor Tower", "Rauh Ancient Ruins, East", "Rauh Ancient Ruins, West",
-    "Ancient Ruins Grand Stairway", "Church of the Bud, Main Entrance",
-    "Church of the Bud", "Ancient Ruins Base", "Temple Town Ruins", "Ravine North"
-  ],
-  // ---- DLC: Jagged Peak ----
-  "Jagged Peak::Open World": [
-    "Grand Altar of Dragon Communion", "Foot of the Jagged Peak",
-    "Jagged Peak Mountainside", "Jagged Peak Summit", "Rest of the Dread Dragon"
-  ],
-  // ---- DLC: Enir-Ilim ----
-  "Enir-Ilim::Enir-Ilim (legacy dungeon)": [
-    "Enir-Ilim: Outer Wall", "First Rise", "Spiral Rise",
-    "Cleansing Chamber Anteroom", "Divine Gate Front Staircase", "Gate of Divinity"
-  ]
-};
-
 // ============================================================================
 // QUESTS — NPC questlines as ordered steps; each step is [zone, instruction].
 // Zone names must match DATA zone names exactly (they drive the per-zone
@@ -1978,853 +1309,6 @@ const QUESTS = [
   ["Enir-Ilim", "He stands with Leda at the end; Dane's Footwork awaits"]
 ]}
 ];
-
-// ============================================================================
-// FINDABLE EQUIPMENT — spirit ashes and spells, keyed "Zone::Place name".
-// Merchant-sold spells are filed at the merchant's physical location (Sellen at
-// Waypoint Ruins, Miriel at Church of Vows, Corhyn/D/Enia at Roundtable Hold)
-// so the tracker still covers "have I acquired this" rather than only pickups.
-// Remembrance trades all live under Roundtable Hold (Enia).
-// Entries tagged (verify) had ambiguous wiki locations — confirm in game.
-// Sources: game8 list pages (base game), Fextralife (DLC).
-// ============================================================================
-const SPIRIT_ASHES = {
-  "Limgrave::Open World": [
-    ["Lone Wolf Ashes", "Renna at the Church of Elleh, after getting Torrent"],
-    ["Spirit Jellyfish Ashes", "Roderika at Stormhill Shack"],
-    ["Godrick Soldier Ashes", "corpse in the jellyfish graveyard southwest of Stormhill Shack"],
-    ["Skeletal Militiaman Ashes", "Tibia Mariner at Summonwater Village"],
-    ["Stormhawk Deenh", "Chapel of Anticipation, second-floor wooden platforms"],
-    ["Wandering Noble Ashes", "corpse propped against a coffin (verify)"]
-  ],
-  "Limgrave::Fringefolk Hero's Grave": [
-    ["Banished Knight Oleg", "Ulcerated Tree Spirit drop"]
-  ],
-  "Limgrave::Murkwater Catacombs": [
-    ["Banished Knight Engvall", "Grave Warden Duelist drop"]
-  ],
-  "Limgrave::Stormfoot Catacombs": [
-    ["Noble Sorcerer Ashes", "Erdtree Burial Watchdog drop (verify)"]
-  ],
-  "Weeping Peninsula::Tombsward Catacombs": [
-    ["Lhutel the Headless", "Cemetery Shade drop"]
-  ],
-  "Weeping Peninsula::Impaler's Catacombs": [
-    ["Demi-Human Ashes", "Erdtree Burial Watchdog drop"]
-  ],
-  "Stormveil Castle::Stormveil Castle (legacy dungeon)": [
-    ["Warhawk Ashes", "reward for the Prophecy Painting puzzle"]
-  ],
-  "Liurnia of the Lakes::Open World": [
-    ["Albinauric Ashes", "corpse in the graveyard east of Caria Manor"],
-    ["Land Squirt Ashes", "grave south of the Eastern Liurnia Lake Shore grace"],
-    ["Latenna the Albinauric", "Slumbering Wolf's Shack — show the Right Medallion"],
-    ["Finger Maiden Therolina Puppet", "Seluvis, after finding his secret dungeon"],
-    ["Jarwight Puppet", "Seluvis, after finding his secret dungeon"],
-    ["Dolores the Sleeping Arrow Puppet", "Pidia — if Nepheli did not drink Seluvis's Potion"],
-    ["Nepheli Loux Puppet", "Pidia's body — if Nepheli drank Seluvis's Potion"],
-    ["Dung Eater Puppet", "Seluvis — if the Dung Eater drank Seluvis's Potion"]
-  ],
-  "Liurnia of the Lakes::Road's End Catacombs": [
-    ["Glintstone Sorcerer Ashes", "Spirit-Caller Snail drop"],
-    ["Raya Lucaria Soldier Ashes", "chest behind an illusory wall"]
-  ],
-  "Liurnia of the Lakes::Cliffbottom Catacombs": [
-    ["Kaiden Sellsword Ashes", "Erdtree Burial Watchdog drop"],
-    ["Page Ashes", "by the tomb in the final area"]
-  ],
-  "Liurnia of the Lakes::Black Knife Catacombs": [
-    ["Twinsage Sorcerer Ashes", "Cemetery Shade drop (verify)"]
-  ],
-  "Academy of Raya Lucaria::Academy of Raya Lucaria (legacy dungeon)": [
-    ["Marionette Soldier Ashes", "corpse in the graveyard area"],
-    ["Fanged Imp Ashes", "Isolated Merchant (verify)"]
-  ],
-  "Caelid::Caelid Catacombs": [
-    ["Kindred of Rot Ashes", "Cemetery Shade drop"],
-    ["Miranda Sprout Ashes", "behind an illusory wall past the first grace"]
-  ],
-  "Caelid::Minor Erdtree Catacombs": [
-    ["Mad Pumpkin Head Ashes", "Erdtree Burial Watchdog duo drop"]
-  ],
-  "Caelid::War-Dead Catacombs": [
-    ["Redmane Knight Ogha", "Putrid Tree Spirit drop"],
-    ["Radahn Soldier Ashes", "rot-filled room guarded by a Cleanrot Knight spirit"]
-  ],
-  "Caelid::Gaol Cave": [
-    ["Putrid Corpse Ashes", "Frenzied Duelist drop"]
-  ],
-  "Caelid::Open World": [
-    ["Rotten Stray Ashes", "corpse south of the Sellia Under-Stair grace"],
-    ["Battlemage Hugues", "Sellia Evergaol"]
-  ],
-  "Greyoll's Dragonbarrow::Sellia Hideaway": [
-    ["Crystalian Ashes", "chest guarded by three Glintstone Sorcerers"]
-  ],
-  "Siofra River::Siofra River": [
-    ["Ancestral Follower Ashes", "Ancestor Spirit drop"]
-  ],
-  "Nokron & Siofra Aqueduct::Nokron, Eternal City": [
-    ["Mimic Tear Ashes", "chest behind the fog wall, Night's Sacred Ground"],
-    ["Nightmaiden & Swordstress Puppets", "imp-statue door needing 2 Stonesword Keys"],
-    ["Greatshield Soldier Ashes", "corpse in the graveyard, guarded by a Fallen Hawks Soldier"]
-  ],
-  "Ainsel River::Ainsel River": [
-    ["Clayman Ashes", "body at the waterfall edge, Ainsel River Main"]
-  ],
-  "Nokstella & Lake of Rot::Nokstella, Eternal City": [
-    ["Archer Ashes", "corpse on a balcony"]
-  ],
-  "Deeproot Depths::Deeproot Depths": [
-    ["Mausoleum Soldier Ashes", "before the dead tree at the northernmost point"]
-  ],
-  "Altus Plateau::Sainted Hero's Grave": [
-    ["Ancient Dragon Knight Kristoff", "Ancient Hero of Zamor drop"],
-    ["Leyndell Soldier Ashes", "corpse in the collapsing-floor room"]
-  ],
-  "Altus Plateau::Perfumer's Grotto": [
-    ["Depraved Perfumer Carmaan", "locked room (verify)"]
-  ],
-  "Altus Plateau::Open World": [
-    ["Giant Rat Ashes", "stable at West Windmill Pasture"],
-    ["Avionette Soldier Ashes", "corpse near a tombstone (verify)"]
-  ],
-  "Mt. Gelmir::Gelmir Hero's Grave": [
-    ["Bloodhound Knight Floh", "Red Wolf of the Champion drop"],
-    ["Fire Monk Ashes", "room with frost-breath statue traps, via the hidden elevator (verify)"]
-  ],
-  "Mt. Gelmir::Unsightly Catacombs": [
-    ["Perfumer Tricia Ashes", "Perfumer Tricia & Misbegotten Warrior drop"],
-    ["Winged Misbegotten Ashes", "pit guarded by Misbegotten"]
-  ],
-  "Mt. Gelmir::Open World": [
-    ["Skeletal Bandit Ashes", "Tibia Mariner at Wyndham Ruins"]
-  ],
-  "Volcano Manor::Volcano Manor (legacy dungeon)": [
-    ["Man-Serpent Ashes", "atop a stone table (verify)"]
-  ],
-  "Leyndell & Capital Outskirts::Auriza Hero's Grave": [
-    ["Vulgar Militia Ashes", "hidden northern area"]
-  ],
-  "Leyndell & Capital Outskirts::Auriza Side Tomb": [
-    ["Soldjars of Fortune Ashes", "Grave Warden Duelist drop"]
-  ],
-  "Leyndell & Capital Outskirts::Open World": [
-    ["Omenkiller Rollo", "Fell Twins, bridge to the Divine Tower of East Altus"]
-  ],
-  "Subterranean Shunning-Grounds::Subterranean Shunning-Grounds": [
-    ["Nomad Ashes", "corpse past the basilisks"]
-  ],
-  "Moonlight Altar::Open World": [
-    ["Black Knife Tiche", "Alecto, Black Knife Ringleader — Ringleader's Evergaol"]
-  ],
-  "Consecrated Snowfield::Hidden Path to the Haligtree": [
-    ["Blackflame Monk Amon", "Stray Mimic Tear drop"]
-  ],
-  "Miquella's Haligtree::Miquella's Haligtree / Elphael (legacy dungeon)": [
-    ["Cleanrot Knight Finlay", "chest beside the gazebo in Elphael"],
-    ["Haligtree Soldier Ashes", "by the chalice statue overlook"],
-    ["Oracle Envoy Ashes", "body near the Haligtree Town grace"]
-  ],
-  "Crumbling Farum Azula::Crumbling Farum Azula (legacy dungeon)": [
-    ["Azula Beastman Ashes", "sarcophagus on the lowest Dragon Temple floor"]
-  ],
-  // ---- DLC ----
-  "Gravesite Plain::Belurat Gaol": [
-    ["Demi-Human Swordsman Yosh", "Demi-Human Swordmaster Onze drop"]
-  ],
-  "Gravesite Plain::Fog Rift Catacombs": [
-    ["Black Knight Commander Andreas", "coffin"]
-  ],
-  "Gravesite Plain::Rivermouth Cave": [
-    ["Bloodfiend Hexer's Ashes", "Chief Bloodfiend drop"]
-  ],
-  "Gravesite Plain::Open World": [
-    ["Ancient Dragon Florissax", "give Thiollier's Concoction to the Dragon Priestess"],
-    ["Man-Fly Ashes", "corpse at the Village of Flies"]
-  ],
-  "Charo's Hidden Grave::Open World": [
-    ["Gravebird Ashes", "corpse on the mountain, western cape"],
-    ["Swordhand of Night Jolán", "give Jolán an Iris of Grace"],
-    ["Jolán and Anna", "reunite Jolán's ashes with Anna"]
-  ],
-  "Scadu Altus::Bonny Gaol": [
-    ["Curseblade Meera", "Curseblade Labirith drop"]
-  ],
-  "Scadu Altus::Fort of Reprimand": [
-    ["Messmer Soldier Ashes", "tombstone"]
-  ],
-  "Scadu Altus::Open World": [
-    ["Fire Knight Queelign", "give Queelign an Iris of Grace"],
-    ["Fingercreeper Ashes", "corpse guarded by a Fingercreeper (verify)"]
-  ],
-  "Shadow Keep::Darklight Catacombs": [
-    ["Bigmouth Imp Ashes", "chest"]
-  ],
-  "Shadow Keep::Specimen Storehouse": [
-    ["Fire Knight Hilde", "loft area with the two elevators"]
-  ],
-  "Ancient Ruins of Rauh::Scorpion River Catacombs": [
-    ["Black Knight Captain Huw", "coffin"]
-  ],
-  "Ancient Ruins of Rauh::Taylew's Ruined Forge": [
-    ["Taylew the Golem Smith", "clear the dungeon"]
-  ],
-  "Ancient Ruins of Rauh::Open World": [
-    ["Spider Scorpion Ashes", "corpse guarded by a Spider Scorpion"],
-    ["Divine Bird Warrior Ornis", "chest in the Rauh ruins"]
-  ],
-  "Enir-Ilim::Enir-Ilim (legacy dungeon)": [
-    ["Inquisitor Ashes", "corpse"],
-    ["Horned Warrior Ashes", "corpse"]
-  ]
-};
-
-const SORCERIES = {
-  "Limgrave::Waypoint Ruins Cellar": [
-    // Scroll-gated spells are filed under Miriel, who receives all books.
-    ["Glintstone Pebble", "Sellen — 1,000 runes"],
-    ["Glintstone Arc", "Sellen — 1,500 runes"],
-    ["Glintstone Stars", "Sellen — 3,000 runes"],
-    ["Crystal Barrage", "Sellen — 1,500 runes"],
-    ["Scholar's Shield", "Sellen — 2,500 runes"],
-    ["Scholar's Armament", "Sellen — 3,000 runes"],
-    ["Shard Spiral", "Sellen — after siding with her against Jerren"]
-  ],
-  "Weeping Peninsula::Open World": [
-    ["Ambush Shard", "corpse beneath Witchbane Ruins"],
-    ["Crystal Burst", "Demi-Human Queen at Demi-Human Forest Ruins"]
-  ],
-  "Stormveil Castle::Stormveil Castle (legacy dungeon)": [
-    ["Rancorcall", "Teardrop Scarab near the Liftside Chamber"]
-  ],
-  "Liurnia of the Lakes::Open World": [
-    ["Carian Greatsword", "Miriel at the Church of Vows — 10,000 runes"],
-    ["Magic Glintblade", "Miriel at the Church of Vows — 3,000 runes"],
-    ["Swift Glintstone Shard", "Miriel — Academy Scroll"],
-    ["Great Glintstone Shard", "Miriel — Academy Scroll"],
-    ["Carian Slicer", "Miriel — Royal House Scroll"],
-    ["Glintblade Phalanx", "Miriel — Royal House Scroll"],
-    ["Star Shower", "Miriel — Conspectus Scroll"],
-    ["Glintstone Cometshard", "Miriel — Conspectus Scroll"],
-    ["Starlight", "Thops at the Church of Irith"],
-    ["Cannon of Haima", "top of the Converted Fringe Tower"],
-    ["Gavel of Haima", "top of the Converted Fringe Tower"],
-    ["Carian Retaliation", "Seluvis — 9,000 runes"],
-    ["Glintstone Icecrag", "Seluvis — 7,500 runes"],
-    ["Freezing Mist", "Seluvis — 12,000 runes"],
-    ["Carian Phalanx", "Seluvis — 6,000 runes"],
-    ["Frozen Armament", "Teardrop Scarab in the Three Sisters, behind Caria Manor"],
-    ["Carian Piercer", "Teardrop Scarab northeast of the Main Caria Manor Gate"],
-    ["Greatblade Phalanx", "Bols, Carian Knight — Cuckoo's Evergaol"],
-    ["Meteorite", "Alabaster Lord — Royal Grave Evergaol"],
-    ["Ancient Death Rancor", "Death Rite Bird south of Gate Town North"],
-    ["Briars of Sin", "Thorn Sorcerer northwest of the Artist's Shack"],
-    ["Magic Downpour", "Preceptor Miriam — Carian Study Hall"],
-    ["Lucidity", "Preceptor Miriam — inverted Carian Study Hall"]
-  ],
-  "Liurnia of the Lakes::Caria Manor": [
-    ["Loretta's Greatbow", "Royal Knight Loretta drop"]
-  ],
-  "Liurnia of the Lakes::Raya Lucaria Crystal Tunnel": [
-    ["Shatter Earth", "corpse in the tunnel"]
-  ],
-  "Liurnia of the Lakes::Academy Crystal Cave": [
-    ["Crystal Release", "Crystalian duo at the end"]
-  ],
-  "Academy of Raya Lucaria::Academy of Raya Lucaria (legacy dungeon)": [
-    ["Comet", "hidden chest behind the illusory bookshelf outside the Debate Parlor"],
-    ["Shattering Crystal", "second floor of the Church of the Cuckoo"],
-    ["Gravity Well", "Monolith Guardian in the academy"],
-    ["Terra Magica", "rooftop at the end of the Academy Crystal Cave route"],
-    ["Thops's Barrier", "Thops's body near the Schoolhouse Classroom"]
-  ],
-  "Caelid::Open World": [
-    ["Night Shard", "Gowry — 4,000 runes"],
-    ["Night Maiden's Mist", "Gowry — 5,000 runes"],
-    ["Night Comet", "chest behind the magic barrier in Sellia, Town of Sorcery"],
-    ["Eternal Darkness", "jail cell in the Swamp Lookout Tower"],
-    ["Rock Sling", "chest in the basement of Street of Sages Ruins"]
-  ],
-  "Caelid::Sellia Crystal Tunnel": [
-    ["Rock Blaster", "chest in the topmost shack of the first mining area"]
-  ],
-  "Caelid::War-Dead Catacombs": [
-    ["Collapsing Stars", "chest"]
-  ],
-  "Greyoll's Dragonbarrow::Sellia Hideaway": [
-    ["Stars of Ruin", "Master Lusat"],
-    ["Crystal Torrent", "Putrid Crystalian trio"]
-  ],
-  "Siofra River::Siofra River": [
-    ["Oracle Bubbles", "Teardrop Scarab in the ruins northeast of Siofra River Well Depths"],
-    ["Great Oracular Bubble", "Teardrop Scarab south of Worshippers' Woods"]
-  ],
-  "Altus Plateau::Open World": [
-    ["Unseen Blade", "Mirage Rise puzzle"],
-    ["Unseen Form", "Mirage Rise puzzle, west of Bower of Bounty"]
-  ],
-  "Mt. Gelmir::Open World": [
-    ["Roiling Magma", "Hermit's Shack"],
-    ["Comet Azur", "Primeval Sorcerer Azur"],
-    ["Tibia's Summons", "Tibia Mariner at Wyndham Ruins"]
-  ],
-  "Volcano Manor::Volcano Manor (legacy dungeon)": [
-    ["Magma Shot", "reward for the first assassination contract"],
-    ["Gelmir's Fury", "reward from Recusant Bernahl's contract"]
-  ],
-  "Mountaintops of the Giants::Open World": [
-    ["Founding Rain of Stars", "Heretical Rise chest"],
-    ["Zamor Ice Storm", "corpse inside the Zamor Ruins"],
-    ["Briars of Punishment", "corpse northeast of the Zamor Ruins"]
-  ],
-  "Moonlight Altar::Open World": [
-    ["Ranni's Dark Moon", "Chelona's Rise chest, after the three wise beasts puzzle"],
-    ["Adula's Moonblade", "Glintstone Dragon Adula"]
-  ],
-  "Consecrated Snowfield::Yelough Anix Tunnel": [
-    ["Meteorite of Astel", "Astel, Stars of Darkness drop"]
-  ],
-  "Consecrated Snowfield::Open World": [
-    ["Explosive Ghostflame", "Death Rite Bird near the Apostate Derelict"]
-  ],
-  "Deeproot Depths::Deeproot Depths": [
-    ["Fia's Mist", "Fia's Champions at the Prince of Death's Throne"]
-  ],
-  "Miquella's Haligtree::Miquella's Haligtree / Elphael (legacy dungeon)": [
-    ["Loretta's Mastery", "Loretta, Knight of the Haligtree drop"]
-  ],
-  "Roundtable Hold & Trades::Roundtable Hold": [
-    ["Rennala's Full Moon", "Enia — Remembrance of the Full Moon Queen"],
-    ["Rykard's Rancor", "Enia — Remembrance of the Blasphemous"],
-    ["Rellana's Twin Moons", "Enia — Remembrance of Twin Moon Knight (DLC)"],
-    ["Vortex of Putrescence", "Enia — Remembrance of Putrescence (DLC)"],
-    ["Blades of Stone", "Enia — Remembrance of the Wild Boar Rider (DLC)"]
-  ],
-  // ---- DLC ----
-  "Castle Ensis::Castle Ensis (legacy dungeon)": [
-    ["Glintblade Trio", "rooftop corpse"]
-  ],
-  "Scadu Altus::Cathedral of Manus Metyr": [
-    ["Miriam's Vanishing", "Count Ymir"],
-    ["Glintstone Nail", "Count Ymir — after the first bell"],
-    ["Glintstone Nails", "Count Ymir — after the first bell"],
-    ["Fleeting Microcosm", "Count Ymir — after the second bell"],
-    ["Cherishing Fingers", "graveyard west of the cathedral"]
-  ],
-  "Scaduview & Hinterland::Open World": [
-    ["Gravitational Missile", "Fallingstar Beast at Fingerstone Hill"]
-  ],
-  "Shadow Keep::Shadow Keep (legacy dungeon)": [
-    ["Mantle of Thorns", "Lesser Ulcerated Tree Spirit"],
-    ["Impenetrable Thorns", "interior, after rotating the statues"]
-  ],
-  "Charo's Hidden Grave::Open World": [
-    ["Rings of Spectral Light", "altar by the giant bird statue"]
-  ],
-  "Cerulean Coast::Stone Coffin Fissure": [
-    ["Mass of Putrescence", "corpse"]
-  ]
-};
-
-const INCANTATIONS = {
-  "Roundtable Hold & Trades::Roundtable Hold": [
-    ["Heal", "Brother Corhyn — 1,500 runes"],
-    ["Urgent Heal", "Brother Corhyn — 1,000 runes"],
-    ["Catch Flame", "Brother Corhyn — 600 runes"],
-    ["Cure Poison", "Brother Corhyn"],
-    ["Rejection", "Brother Corhyn — 1,500 runes"],
-    ["Magic Fortification", "Brother Corhyn — 3,500 runes"],
-    ["Flame Fortification", "Brother Corhyn — 3,000 runes"],
-    ["Flame Sling", "Brother Corhyn — 800 runes"],
-    // Prayerbook-gated spells are filed under Miriel, who receives all books.
-    ["Lightning Fortification", "Brother Corhyn — 7,500 runes"],
-    ["Great Heal", "Brother Corhyn — 9,000 runes"],
-    ["Discus of Light", "Brother Corhyn — 11,000 runes"],
-    ["Immutable Shield", "Brother Corhyn — 13,000 runes"],
-    ["Litany of Proper Death", "D, Hunter of the Dead — 2,500 runes"],
-    ["Order's Blade", "D, Hunter of the Dead — 3,000 runes"],
-    ["Black Flame's Protection", "Gideon Ofnir — after Miquella's Haligtree"],
-    ["Lord's Divine Fortification", "Gideon Ofnir — after defeating Malenia"],
-    ["Law of Causality", "Gideon Ofnir — after defeating Mohg, Lord of Blood"],
-    ["Burn, O Flame!", "Enia — Remembrance of the Fire Giant"],
-    ["Bloodboon", "Enia — Remembrance of the Blood Lord"],
-    ["Scarlet Aeonia", "Enia — Remembrance of the Rot Goddess"],
-    ["Placidusax's Ruin", "Enia — Remembrance of the Dragonlord"],
-    ["Messmer's Orb", "Enia — Remembrance of the Impaler (DLC)"],
-    ["Midra's Flame of Frenzy", "Enia — Remembrance of the Lord of Frenzied Flame (DLC)"],
-    ["Light of Miquella", "Enia — Remembrance of a God and a Lord (DLC)"],
-    ["Land of Shadow", "Enia — Remembrance of the Shadow Sunflower (DLC)"],
-    ["Rotten Butterflies", "Enia — Remembrance of the Saint of the Bud (DLC)"]
-  ],
-  "Limgrave::Open World": [
-    ["Agheel's Flame", "Flying Dragon Agheel"],
-    ["Dragonfire", "Church of Dragon Communion — Dragon Heart trade"],
-    ["Dragonclaw", "Church of Dragon Communion — Dragon Heart trade"],
-    ["Dragonmaw", "Church of Dragon Communion — Dragon Heart trade"],
-    ["Aspects of the Crucible: Tail", "Crucible Knight — Stormhill Evergaol"]
-  ],
-  "Weeping Peninsula::Open World": [
-    ["The Flame of Frenzy", "glowing light at Callu Baptismal Church"],
-    ["Poison Mist", "Teardrop Scarab southeast of Castle Morne Rampart"],
-    ["Divine Fortification", "Teardrop Scarab west of Tombsward Ruins"],
-    ["Lightning Strike", "Teardrop Scarab east of the Tombsward grace"]
-  ],
-  "Stormveil Castle::Stormveil Castle (legacy dungeon)": [
-    ["Aspects of the Crucible: Horns", "Crucible Knight at the Rampart Tower"]
-  ],
-  "Liurnia of the Lakes::Open World": [
-    ["Lord's Heal", "Miriel — Two Fingers' Prayerbook"],
-    ["Lord's Aid", "Miriel — Two Fingers' Prayerbook"],
-    ["Assassin's Approach", "Miriel — Assassin's Prayerbook"],
-    ["Darkness", "Miriel — Assassin's Prayerbook"],
-    ["O, Flame!", "Miriel — Fire Monks' Prayerbook"],
-    ["Surge, O Flame!", "Miriel — Fire Monks' Prayerbook"],
-    ["Black Flame", "Miriel — Godskin Prayerbook"],
-    ["Black Flame Blade", "Miriel — Godskin Prayerbook"],
-    ["Lightning Spear", "Miriel — Dragon Cult Prayerbook"],
-    ["Honed Bolt", "Miriel — Dragon Cult Prayerbook"],
-    ["Electrify Armament", "Miriel — Dragon Cult Prayerbook"],
-    ["Blessing's Boon", "Miriel — 4,000 runes"],
-    ["Flame, Fall Upon Them", "Miriel — Giant's Prayerbook"],
-    ["Giantsflame Take Thee", "Miriel — Giant's Prayerbook"],
-    ["Radagon's Rings of Light", "Miriel — Golden Order Principia"],
-    ["Law of Regression", "Miriel — Golden Order Principia"],
-    ["Ancient Dragons' Lightning Spear", "Miriel — Ancient Dragon Prayerbook"],
-    ["Ancient Dragons' Lightning Strike", "Miriel — Ancient Dragon Prayerbook"],
-    ["Flame of the Fell God", "Adan, Thief of Fire — Malefactor's Evergaol"],
-    ["Bloodflame Blade", "Teardrop Scarab north of Rose Church"],
-    ["Frenzied Burst", "Teardrop Scarab north of the Frenzied Flame Village"],
-    ["Howl of Shabriri", "chest in the Frenzied Flame Village tower"],
-    ["Flame, Cleanse Me", "Fire Monk camp southwest of the Eastern Tableland"]
-  ],
-  "Caelid::Open World": [
-    ["Dragonice", "Cathedral of Dragon Communion — Dragon Heart trade"],
-    ["Glintstone Breath", "Cathedral of Dragon Communion — Dragon Heart trade"],
-    ["Rotten Breath", "Cathedral of Dragon Communion — Dragon Heart trade"],
-    ["Smarag's Glintstone Breath", "Cathedral of Dragon Communion — Dragon Heart trade"],
-    ["Ekzykes's Decay", "Cathedral of Dragon Communion — Dragon Heart trade"],
-    ["Greyoll's Roar", "Cathedral of Dragon Communion — Dragon Heart trade"],
-    ["Pest Threads", "Gowry — 7,500 runes"],
-    ["Flame, Grant Me Strength", "corpse behind Fort Gael"],
-    ["Whirl, O Flame!", "Teardrop Scarab northeast of the Shack of the Rotting"],
-    ["Poison Armament", "Teardrop Scarab south of Sellia Crystal Tunnel"]
-  ],
-  "Greyoll's Dragonbarrow::Open World": [
-    ["Bestial Sling", "Gurranq — 2 Deathroot"],
-    ["Bestial Vitality", "Gurranq — 3 Deathroot"],
-    ["Beast Claw", "Gurranq — 5 Deathroot"],
-    ["Stone of Gurranq", "Gurranq — 6 Deathroot"],
-    ["Gurranq's Beast Claw", "Gurranq — 8 Deathroot"],
-    ["Bestial Constitution", "Teardrop Scarab under the western Farum Greatbridge"]
-  ],
-  "Nokron & Siofra Aqueduct::Siofra Aqueduct": [
-    ["Order Healing", "Teardrop Scarab in the aqueduct"]
-  ],
-  "Ainsel River::Ainsel River": [
-    ["Frozen Lightning Spear", "Dragonkin Soldier of Nokstella drop"]
-  ],
-  "Deeproot Depths::Deeproot Depths": [
-    ["Fortissax's Lightning Spear", "Lichdragon Fortissax drop"],
-    ["Death Lightning", "Lichdragon Fortissax — Fia's questline"],
-    ["Elden Stars", "corpse in the ant-guarded cave"]
-  ],
-  "Altus Plateau::Open World": [
-    ["Lansseax's Glaive", "Ancient Dragon Lansseax"],
-    ["Protection of the Erdtree", "Teardrop Scarab southeast of Road of Iniquity Side Path"],
-    ["Dragonbolt Blessing", "chest in Stormcaller Church"],
-    ["Scouring Black Flame", "Godskin Apostle at Dominula, Windmill Village"],
-    ["Wrath of Gold", "chest beneath the Woodfolk Ruins (verify)"]
-  ],
-  "Mt. Gelmir::Open World": [
-    ["Golden Vow", "corpse in the Corpse-Stench Shack"],
-    ["Magma Breath", "Magma Wyrm in Mt. Gelmir"]
-  ],
-  "Volcano Manor::Volcano Manor (legacy dungeon)": [
-    ["Noble Presence", "Godskin Noble drop"],
-    ["Aspects of the Crucible: Breath", "Tanith's Knight, after killing Tanith"]
-  ],
-  "Leyndell & Capital Outskirts::Leyndell, Royal Capital (legacy dungeon)": [
-    ["Barrier of Gold", "invisible Teardrop Scarab"],
-    ["Fire's Deadly Sin", "Flightless Bird Painting reward, Fortified Manor"]
-  ],
-  "Subterranean Shunning-Grounds::Subterranean Shunning-Grounds": [
-    ["Inescapable Frenzy", "corpse near the Cathedral of the Forsaken"],
-    ["Shadow Bait", "corpse in the shunning-grounds"],
-    ["Bloodflame Talons", "Mohg, the Omen drop"]
-  ],
-  "Mountaintops of the Giants::Open World": [
-    ["Borealis's Mist", "Borealis, the Freezing Fog"],
-    ["Vyke's Dragonbolt", "Roundtable Knight Vyke — Lord Contender's Evergaol"]
-  ],
-  "Mountaintops of the Giants::Giant-Conquering Hero's Grave": [
-    ["Flame, Protect Me", "corpse behind the fogged barrier"]
-  ],
-  "Mountaintops of the Giants::Spiritcaller's Cave": [
-    ["Black Flame Ritual", "Spirit-Caller Snail drop"]
-  ],
-  "Consecrated Snowfield::Open World": [
-    ["Theodorix's Magma", "Great Wyrm Theodorix"],
-    ["Unendurable Frenzy", "chest in the Yelough Anix Ruins"]
-  ],
-  "Mohgwyn Palace::Mohgwyn Palace": [
-    ["Swarm of Flies", "corpse near the Dynasty Mausoleum Entrance"]
-  ],
-  "Miquella's Haligtree::Miquella's Haligtree / Elphael (legacy dungeon)": [
-    ["Triple Rings of Light", "behind the fogged door near the Prayer Room"]
-  ],
-  "Crumbling Farum Azula::Crumbling Farum Azula (legacy dungeon)": [
-    ["Black Blade", "Maliketh, the Black Blade drop"],
-    ["Golden Lightning Fortification", "Teardrop Scarab near the Dragon Temple Lift"]
-  ],
-  "Leyndell, Ashen Capital & Endgame::Leyndell, Ashen Capital": [
-    ["Blessing of the Erdtree", "Queen's Bedchamber chest"],
-    ["Erdtree Heal", "Queen's Bedchamber chest"]
-  ],
-  // ---- DLC ----
-  "Gravesite Plain::Open World": [
-    ["Ghostflame Breath", "Grand Altar of Dragon Communion — 3 Dragon Hearts"],
-    ["Bayle's Flame Lightning", "Grand Altar of Dragon Communion — Heart of Bayle"],
-    ["Bayle's Tyranny", "Grand Altar of Dragon Communion — Heart of Bayle"],
-    ["Dragonbolt of Florissax", "Dragon Priestess reward"]
-  ],
-  "Gravesite Plain::Fog Rift Catacombs": [
-    ["Electrocharge", "corpse"]
-  ],
-  "Belurat, Tower Settlement::Belurat, Tower Settlement (legacy dungeon)": [
-    ["Spira", "altar in the settlement"],
-    ["Divine Beast Tornado", "Divine Beast Dancing Lion drop"],
-    ["Watchful Spirit", "Hornsent Grandam, after the Dancing Lion"]
-  ],
-  "Cerulean Coast::Stone Coffin Fissure": [
-    ["Multilayered Ring of Light", "Misbegotten Crusader spirit"]
-  ],
-  "Scadu Altus::Open World": [
-    ["Aspects of the Crucible: Bloom", "corpse by the giant Miranda Sprout"],
-    ["Golden Arcs", "chest southeast of Moorth Ruins"],
-    ["Giant Golden Arc", "Ruins of Unte chest — needs a Hefty Furnace Pot"],
-    ["Heal from Afar", "corpse on the underground golden-tree path"],
-    ["Furious Blade of Ansbach", "completing Sir Ansbach's questline"]
-  ],
-  "Shadow Keep::Shadow Keep (legacy dungeon)": [
-    ["Aspects of the Crucible: Thorns", "Golden Hippopotamus drop"],
-    ["Wrath from Afar", "upper-level column"]
-  ],
-  "Shadow Keep::Specimen Storehouse": [
-    ["Fire Serpent", "storehouse balcony"],
-    ["Rain of Fire", "Fire Knight at the West Rampart"]
-  ],
-  "Scaduview & Hinterland::Open World": [
-    ["Minor Erdtree", "Shaman Village flower field"]
-  ],
-  "Ancient Ruins of Rauh::Open World": [
-    ["Divine Bird Feathers", "corpse by the lake in the Rauh ruins"],
-    ["Pest-Thread Spears", "corpse behind the main stairs, Church of the Bud"],
-    ["Roar of Rugalea", "great bear northwest of Ravine North"]
-  ],
-  "Ancient Ruins of Rauh::Scorpion River Catacombs": [
-    ["Knight's Lightning Spear", "ledge area corpse"]
-  ]
-};
-
-// ============================================================================
-// BOOKS — cookbooks, prayerbooks and scrolls, keyed "Zone::Place name".
-// All render under the Key Items category. Deserter's Cookbook is intentionally
-// omitted: it appears on wikis but was cut before release, so it would be an
-// unobtainable checkbox. Entries tagged (verify) had vague wiki locations.
-// Sources: Fextralife (cookbooks), roundtablehold.net (scrolls/prayerbooks).
-// ============================================================================
-const BOOKS = {
-  // ---------------- Base game ----------------
-  "Limgrave::Open World": [
-    ["Nomadic Warrior's Cookbook [1]", "Merchant Kalé at the Church of Elleh"],
-    ["Nomadic Warrior's Cookbook [2]", "Merchant Kalé at the Church of Elleh"],
-    ["Nomadic Warrior's Cookbook [3]", "Nomadic Merchant east of Saintsbridge"],
-    ["Nomadic Warrior's Cookbook [4]", "south of Mistwood, near the Siofra River Well"],
-    ["Nomadic Warrior's Cookbook [5]", "Nomadic Merchant in east Limgrave"],
-    ["Nomadic Warrior's Cookbook [6]", "Fort Haight, top of the main stairs"],
-    ["Nomadic Warrior's Cookbook [7]", "collapsed bridge on Stormhill, near Stormveil"],
-    ["Armorer's Cookbook [1]", "Kaiden Sellsword camp northeast of Agheel Lake"],
-    ["Armorer's Cookbook [2]", "Nomadic Merchant in west Limgrave"],
-    ["Armorer's Cookbook [3]", "Nomadic Merchant in east Limgrave"],
-    ["Missionary's Cookbook [1]", "Merchant Kalé at the Church of Elleh"],
-    ["Fevor's Cookbook [1]", "corpse on a stone coffin in the ruined tower north of Mistwood Outskirts"],
-    ["Royal House Scroll", "ruin east of the Agheel Lake South grace"]
-  ],
-  "Limgrave::Murkwater Cave": [
-    ["Missionary's Cookbook [2]", "bought from Patches"]
-  ],
-  "Weeping Peninsula::Tombsward Cave": [
-    ["Nomadic Warrior's Cookbook [8]", "in the cave"]
-  ],
-  "Weeping Peninsula::Tombsward Catacombs": [
-    ["Nomadic Warrior's Cookbook [9]", "in the catacombs"]
-  ],
-  "Stormveil Castle::Stormveil Castle (legacy dungeon)": [
-    ["Nomadic Warrior's Cookbook [10]", "near the Rampart Tower"],
-    ["Godskin Prayerbook", "imp-statue door reached from the Liftside Chamber"]
-  ],
-  "Liurnia of the Lakes::Open World": [
-    ["Nomadic Warrior's Cookbook [11]", "Nomadic Merchant in west Liurnia"],
-    ["Nomadic Warrior's Cookbook [12]", "Rose Church"],
-    ["Nomadic Warrior's Cookbook [13]", "Nomadic Merchant in north Liurnia"],
-    ["Glintstone Craftsman's Cookbook [1]", "enemy outpost northwest of the Church of Irith"],
-    ["Glintstone Craftsman's Cookbook [2]", "Laskyar Ruins"],
-    ["Glintstone Craftsman's Cookbook [3]", "Highway Lookout Tower"],
-    ["Glintstone Craftsman's Cookbook [4]", "tower near Academy Gate Town"],
-    ["Fevor's Cookbook [2]", "merchant east of the Main Academy Gate — 3,500 runes"],
-    ["Frenzied's Cookbook [1]", "corpse in a house in the Frenzied Flame Village"],
-    ["Fire Monks' Prayerbook", "Fire Monk camp in southern Liurnia"],
-    ["Dragon Cult Prayerbook", "Leyndell Knight south of the Artist's Shack"],
-    ["Academy Scroll", "graveyard west of the Lake-Facing Cliffs grace"]
-  ],
-  "Liurnia of the Lakes::Caria Manor": [
-    ["Glintstone Craftsman's Cookbook [6]", "in the manor"],
-    ["Glintstone Craftsman's Cookbook [7]", "bought from Pidia, Carian Servant"]
-  ],
-  "Academy of Raya Lucaria::Academy of Raya Lucaria (legacy dungeon)": [
-    ["Glintstone Craftsman's Cookbook [5]", "Schoolhouse Classroom"],
-    ["Conspectus Scroll", "room left of the Schoolhouse Classroom grace"]
-  ],
-  "Caelid::Open World": [
-    ["Nomadic Warrior's Cookbook [14]", "Smoldering Church"],
-    ["Nomadic Warrior's Cookbook [15]", "Nomadic Merchant in south Caelid"],
-    ["Missionary's Cookbook [3]", "Smoldering Church"],
-    ["Ancient Dragon Apostle's Cookbook [3]", "corpse in the Cathedral of Dragon Communion"]
-  ],
-  "Caelid::Redmane Castle": [
-    ["Armorer's Cookbook [4]", "western gate house"],
-    ["Armorer's Cookbook [5]", "southwest room"]
-  ],
-  "Siofra River::Siofra River": [
-    ["Nomadic Warrior's Cookbook [17]", "Nomadic Merchant in Siofra River"],
-    ["Nomadic Warrior's Cookbook [18]", "Nomadic Merchant in Siofra River"],
-    ["Armorer's Cookbook [6]", "cliff edge west of Siofra River Bank"]
-  ],
-  "Nokron & Siofra Aqueduct::Siofra Aqueduct": [
-    ["Missionary's Cookbook [5]", "in the aqueduct"]
-  ],
-  "Ainsel River::Ainsel River": [
-    ["Nomadic Warrior's Cookbook [16]", "Nomadic Merchant in Ainsel River"],
-    ["Perfumer's Cookbook [4]", "Nomadic Merchant in Ainsel River — 3,000 runes"]
-  ],
-  "Nokstella & Lake of Rot::Lake of Rot": [
-    ["Nomadic Warrior's Cookbook [22]", "ruined area west of the Lake of Rot"]
-  ],
-  "Altus Plateau::Open World": [
-    ["Nomadic Warrior's Cookbook [19]", "Woodfolk Ruins"],
-    ["Ancient Dragon Apostle's Cookbook [2]", "merchant between Writheblood Ruins and the Minor Erdtree — 4,500 runes"],
-    ["Perfumer's Cookbook [1]", "first chest inside the Perfumer's Ruins"]
-  ],
-  "Altus Plateau::Shaded Castle": [
-    ["Perfumer's Cookbook [2]", "corpse on the northern walls"]
-  ],
-  "Mt. Gelmir::Open World": [
-    ["Nomadic Warrior's Cookbook [20]", "Nomadic Merchant on Mt. Gelmir"],
-    ["Armorer's Cookbook [7]", "Fort Laiedd, bottom floor"]
-  ],
-  "Mt. Gelmir::Wyndham Catacombs": [
-    ["Ancient Dragon Apostle's Cookbook [1]", "corpse behind rusted bars in the sewers"]
-  ],
-  "Volcano Manor::Volcano Manor (legacy dungeon)": [
-    ["Nomadic Warrior's Cookbook [21]", "in the manor"],
-    ["Missionary's Cookbook [6]", "near the Temple of Eiglay"]
-  ],
-  "Leyndell & Capital Outskirts::Open World": [
-    ["Missionary's Cookbook [4]", "Minor Erdtree Church"]
-  ],
-  "Leyndell & Capital Outskirts::Auriza Side Tomb": [
-    ["Perfumer's Cookbook [3]", "transporter chest in the bench room"]
-  ],
-  "Leyndell & Capital Outskirts::Leyndell, Royal Capital (legacy dungeon)": [
-    ["Two Fingers' Prayerbook", "fireplace room near the Fortified Manor, First Floor grace"],
-    ["Golden Order Principia", "hanging chair reached from the Erdtree Sanctuary rooftop"]
-  ],
-  "Mountaintops of the Giants::Open World": [
-    ["Missionary's Cookbook [7]", "Nomadic Merchant in the east Mountaintops"],
-    ["Giant's Prayerbook", "atop Guardian's Garrison, behind Chief Guardian Arghanthy"]
-  ],
-  "Consecrated Snowfield::Open World": [
-    ["Nomadic Warrior's Cookbook [23]", "by the road north of the first grace"],
-    ["Glintstone Craftsman's Cookbook [8]", "around the Albinauric Rise"]
-  ],
-  "Mohgwyn Palace::Mohgwyn Palace": [
-    ["Nomadic Warrior's Cookbook [24]", "cliff southeast of the blood marsh"],
-    ["Frenzied's Cookbook [2]", "rafters in the hidden room behind Mohg's altar"]
-  ],
-  "Crumbling Farum Azula::Crumbling Farum Azula (legacy dungeon)": [
-    ["Ancient Dragon Apostle's Cookbook [4]", "top roof, past the building behind the dragon"],
-    ["Ancient Dragon Prayerbook", "main hall northwest of the Crumbling Beast Grave grace"]
-  ],
-  "Roundtable Hold & Trades::Roundtable Hold": [
-    ["Fevor's Cookbook [3]", "Gideon Ofnir, after defeating Mohg, Lord of Blood"],
-    ["Assassin's Prayerbook", "behind nested imp-statue doors — 3 Stonesword Keys"]
-  ],
-  // ---------------- Shadow of the Erdtree ----------------
-  "Gravesite Plain::Open World": [
-    ["Forager Brood Cookbook [2]", "given by a pest east of Cliffroad Terminus"],
-    ["Forager Brood Cookbook [3]", "given by a pest in the forest northeast of the Ellac River"],
-    ["Forager Brood Cookbook [7]", "Moore, as a dialogue reward"],
-    ["Greater Potentate's Cookbook [1]", "Scorched Ruins"],
-    ["Greater Potentate's Cookbook [2]", "Run-Down Traveler's Rest (verify)"],
-    ["Greater Potentate's Cookbook [12]", "on the waterfall rocks (verify)"],
-    ["Fire Knight's Cookbook [2]", "soldier camp past the Ellac Greatbridge"]
-  ],
-  "Gravesite Plain::Belurat Gaol": [
-    ["Greater Potentate's Cookbook [11]", "jar labyrinth"]
-  ],
-  "Gravesite Plain::Ruined Forge Lava Intake": [
-    ["Greater Potentate's Cookbook [13]", "in the forge"]
-  ],
-  "Gravesite Plain::Fog Rift Catacombs": [
-    ["Ancient Dragon Knight's Cookbook [1]", "in the catacombs"]
-  ],
-  "Cerulean Coast::Open World": [
-    ["Greater Potentate's Cookbook [5]", "forest south of Prospect Town"],
-    ["St. Trina Disciple's Cookbook [1]", "under the wilted tree"],
-    ["St. Trina Disciple's Cookbook [2]", "south of Cerulean Coast Cross"],
-    ["Grave Keeper's Cookbook [1]", "southeast of Cerulean Coast West"]
-  ],
-  "Cerulean Coast::Stone Coffin Fissure": [
-    ["St. Trina Disciple's Cookbook [3]", "cave in the Garden of Deep Purple, past the Putrescent Knight"]
-  ],
-  "Charo's Hidden Grave::Open World": [
-    ["Greater Potentate's Cookbook [14]", "northwest of Charo's Hidden Grave"],
-    ["Grave Keeper's Cookbook [2]", "at the entrance"],
-    ["Tibia's Cookbook", "Tibia Mariner drop"]
-  ],
-  "Scadu Altus::Open World": [
-    ["Forager Brood Cookbook [1]", "given by a pest west of the Ruined Forge of Starfall Past"],
-    ["Forager Brood Cookbook [4]", "given by a warmed pest north of the Church of the Crusade"],
-    ["Forager Brood Cookbook [5]", "given by a pest in the poison swamp north of Moorth Ruins"],
-    ["Finger-Weaver's Cookbook [1]", "Finger-Weaver's Hovel (verify)"],
-    ["Greater Potentate's Cookbook [3]", "west of Fog Rift Fort"],
-    ["Greater Potentate's Cookbook [4]", "east of the Cathedral of Manus Metyr"],
-    ["Greater Potentate's Cookbook [7]", "swamp east of the Bloodfiend area (verify)"],
-    ["Greater Potentate's Cookbook [10]", "dilapidated building, through the roof (verify)"],
-    ["Fire Knight's Cookbook [1]", "Messmer camp east of Highroad Cross"],
-    ["Battlefield Priest's Cookbook [3]", "army tent (verify)"]
-  ],
-  "Scadu Altus::Fort of Reprimand": [
-    ["Battlefield Priest's Cookbook [2]", "after defeating Black Knight Edredd"]
-  ],
-  "Shadow Keep::Open World": [
-    ["Forager Brood Cookbook [6]", "given by a pest east outside Shadow Keep"]
-  ],
-  "Shadow Keep::Shadow Keep (legacy dungeon)": [
-    ["Loyal Knight's Cookbook", "armory room chest"],
-    ["Battlefield Priest's Cookbook [1]", "right of Queen Marika's statue"]
-  ],
-  "Shadow Keep::Specimen Storehouse": [
-    ["Battlefield Priest's Cookbook [4]", "hidden door from the storehouse"]
-  ],
-  "Scaduview & Hinterland::Finger Ruins of Miyr": [
-    ["Finger-Weaver's Cookbook [2]", "after Ymir's questline"]
-  ],
-  "Abyssal Woods::Open World": [
-    ["Mad Craftsman's Cookbook [1]", "west of Divided Falls"],
-    ["Mad Craftsman's Cookbook [2]", "northeast of Midra's Manse"]
-  ],
-  "Abyssal Woods::Midra's Manse": [
-    ["Mad Craftsman's Cookbook [3]", "before the second grace"]
-  ],
-  "Ancient Ruins of Rauh::Open World": [
-    ["Greater Potentate's Cookbook [8]", "cemetery mound near Ravine North"],
-    ["Greater Potentate's Cookbook [9]", "beyond the scarlet rot swamp, by the wall (verify)"],
-    ["Antiquity Scholar's Cookbook [1]", "cave north of Temple Town Ruins"],
-    ["Antiquity Scholar's Cookbook [2]", "in the ancient ruins"]
-  ],
-  "Ancient Ruins of Rauh::Scorpion River Catacombs": [
-    ["Ancient Dragon Knight's Cookbook [2]", "in the catacombs"]
-  ],
-  "Jagged Peak::Open World": [
-    ["Igon's Cookbook [1]", "broken tower before the Grand Altar of Dragon Communion"],
-    ["Igon's Cookbook [2]", "cliff edge near Jagged Peak Mountainside"],
-    ["Greater Potentate's Cookbook [6]", "cliff north of the Foot of the Jagged Peak"]
-  ]
-};
-
-// ============================================================================
-// BELL BEARINGS — boss drops and world pickups only, keyed "Zone::Place name".
-// Deliberately EXCLUDES the ~30 bell bearings obtained from a friendly NPC's
-// death (Kalé's, Sellen's, Gowry's, the Nomadic/Isolated/Hermit Merchant's,
-// etc.) — those are missable-by-choice shop unlocks, not finds.
-// Renders under Key Items, matching the game's own inventory tab.
-// Source: Fextralife Bell Bearings, cross-checked against rpgsite for hunters.
-// ============================================================================
-const BELL_BEARINGS = {
-  // ---- Smithing-Stone Miner's ----
-  "Liurnia of the Lakes::Raya Lucaria Crystal Tunnel": [
-    ["Smithing-Stone Miner's Bell Bearing [1]", "Crystalian boss drop — Smithing Stone [1]–[2]"]
-  ],
-  "Leyndell & Capital Outskirts::Sealed Tunnel": [
-    ["Smithing-Stone Miner's Bell Bearing [2]", "chest in the first secret area — Smithing Stone [3]–[4]"]
-  ],
-  "Mountaintops of the Giants::Open World": [
-    ["Smithing-Stone Miner's Bell Bearing [3]", "chest at the bottom of the stairs, Zamor Ruins — Smithing Stone [5]–[6]"],
-    ["Somberstone Miner's Bell Bearing [3]", "corpse outside the First Church of Marika — Somber [5]–[6]"]
-  ],
-  "Caelid::Sellia Crystal Tunnel": [
-    ["Somberstone Miner's Bell Bearing [1]", "Fallingstar Beast drop — Somber Smithing Stone [1]–[2]"]
-  ],
-  "Altus Plateau::Altus Tunnel": [
-    ["Somberstone Miner's Bell Bearing [2]", "Crystalian duo drop — Somber Smithing Stone [3]–[4]"]
-  ],
-  // ---- Glovewort Picker's ----
-  "Mt. Gelmir::Wyndham Catacombs": [
-    ["Glovewort Picker's Bell Bearing [1]", "Erdtree Burial Watchdog drop — Grave Glovewort [1]–[3]"]
-  ],
-  "Mountaintops of the Giants::Giants' Mountaintop Catacombs": [
-    ["Glovewort Picker's Bell Bearing [2]", "Ulcerated Tree Spirit drop — Grave Glovewort [4]–[6]"]
-  ],
-  "Nokron & Siofra Aqueduct::Nokron, Eternal City": [
-    ["Ghost-Glovewort Picker's Bell Bearing [1]", "corpse at the base of the gazebo — Ghost Glovewort [1]–[3]"]
-  ],
-  "Nokstella & Lake of Rot::Nokstella, Eternal City": [
-    ["Ghost-Glovewort Picker's Bell Bearing [2]", "chest guarded by Silver Tears — Ghost Glovewort [4]–[6]"]
-  ],
-  "Miquella's Haligtree::Miquella's Haligtree / Elphael (legacy dungeon)": [
-    ["Ghost-Glovewort Picker's Bell Bearing [3]", "beside a grave in the Elphael graveyard — Ghost Glovewort [7]–[9]"]
-  ],
-  "Crumbling Farum Azula::Crumbling Farum Azula (legacy dungeon)": [
-    ["Smithing-Stone Miner's Bell Bearing [4]", "Godskin Duo drop — Smithing Stone [7]–[8]"],
-    ["Somberstone Miner's Bell Bearing [4]", "corpse by the Tempest-Facing Balcony — Somber [7]–[8]"],
-    ["Somberstone Miner's Bell Bearing [5]", "corpse in the abandoned temple, north side — Somber [9]"],
-    ["Glovewort Picker's Bell Bearing [3]", "gazebo in front of the lake — Grave Glovewort [7]–[9]"]
-  ],
-  // ---- Bell Bearing Hunter drops ----
-  "Limgrave::Open World": [
-    ["Bone Peddler's Bell Bearing", "Bell Bearing Hunter at Warmaster's Shack (night)"]
-  ],
-  "Liurnia of the Lakes::Open World": [
-    ["Meat Peddler's Bell Bearing", "Bell Bearing Hunter at the Church of Vows (night)"]
-  ],
-  "Leyndell & Capital Outskirts::Open World": [
-    ["Medicine Peddler's Bell Bearing", "Bell Bearing Hunter at Hermit Merchant's Shack (night)"]
-  ],
-  "Greyoll's Dragonbarrow::Open World": [
-    ["Gravity Stone Peddler's Bell Bearing", "Bell Bearing Hunter at Isolated Merchant's Shack (night)"]
-  ],
-  // ---- DLC world pickups ----
-  "Gravesite Plain::Open World": [
-    ["Herbalist's Bell Bearing", "west ravine wall between Pillar Path Waypoint and Dragon's Pit"],
-    ["Mushroom-Seller's Bell Bearing [2]", "shoot the jar on the waterfall cliff south of Ellac River Downstream"]
-  ],
-  "Ancient Ruins of Rauh::Open World": [
-    ["Mushroom-Seller's Bell Bearing [1]", "shoot the pot hanging from the cliff near Temple Town Ruins"]
-  ],
-  "Scadu Altus::Open World": [
-    ["Greasemonger's Bell Bearing", "shoot the pot north of Bridge Leading to the Village, by the wolves"],
-    ["Moldmonger's Bell Bearing", "shoot the pot by Recluses' River Downstream, then drop from the graves"]
-  ],
-  "Scaduview & Hinterland::Open World": [
-    ["Spellmachinist's Bell Bearing", "Rabbath's Rise, lower level — reached from Shaman Village"]
-  ],
-  "Cerulean Coast::Open World": [
-    ["String-Seller's Bell Bearing", "shoot the pot hanging from the ravine wall at Prospect Town"]
-  ]
-};
-
 // ============================================================================
 // App logic
 // ============================================================================
@@ -2905,67 +1389,7 @@ const ID_MIGRATIONS = {
     "Ainsel River::Bosses::Dragonkin Soldier of Nokstella::Ainsel River Main",
   // reverts a bad edit: this hunter spawns at night like the other three
   "Liurnia of the Lakes::Bosses::Bell Bearing Hunter::Church of Vows (daytime)":
-    "Liurnia of the Lakes::Bosses::Bell Bearing Hunter::Church of Vows (night)",
-  "Liurnia of the Lakes::Key Items::Meat Peddler's Bell Bearing::Bell Bearing Hunter at the Church of Vows (daytime)":
-    "Liurnia of the Lakes::Key Items::Meat Peddler's Bell Bearing::Bell Bearing Hunter at the Church of Vows (night)",
-
-  // scroll- and prayerbook-gated spells moved to Miriel, who receives all books
-  "Limgrave::Sorceries::Swift Glintstone Shard::Sellen — 600 runes":
-    "Liurnia of the Lakes::Sorceries::Swift Glintstone Shard::Miriel — Academy Scroll",
-  "Limgrave::Sorceries::Great Glintstone Shard::Sellen — 2,000 runes":
-    "Liurnia of the Lakes::Sorceries::Great Glintstone Shard::Miriel — Academy Scroll",
-  "Limgrave::Sorceries::Carian Slicer::Sellen — 1,500 runes":
-    "Liurnia of the Lakes::Sorceries::Carian Slicer::Miriel — Royal House Scroll",
-  "Limgrave::Sorceries::Glintblade Phalanx::Sellen — after the Royal House Scroll":
-    "Liurnia of the Lakes::Sorceries::Glintblade Phalanx::Miriel — Royal House Scroll",
-  "Limgrave::Sorceries::Star Shower::Sellen — after the Conspectus Scroll":
-    "Liurnia of the Lakes::Sorceries::Star Shower::Miriel — Conspectus Scroll",
-  "Limgrave::Sorceries::Glintstone Cometshard::Sellen — after the Conspectus Scroll":
-    "Liurnia of the Lakes::Sorceries::Glintstone Cometshard::Miriel — Conspectus Scroll",
-  "Roundtable Hold & Trades::Incantations::Assassin's Approach::Brother Corhyn — 2,000 runes":
-    "Liurnia of the Lakes::Incantations::Assassin's Approach::Miriel — Assassin's Prayerbook",
-  "Roundtable Hold & Trades::Incantations::Darkness::Brother Corhyn — 3,500 runes":
-    "Liurnia of the Lakes::Incantations::Darkness::Miriel — Assassin's Prayerbook",
-  "Roundtable Hold & Trades::Incantations::O, Flame!::Brother Corhyn — 6,000 runes":
-    "Liurnia of the Lakes::Incantations::O, Flame!::Miriel — Fire Monks' Prayerbook",
-  "Roundtable Hold & Trades::Incantations::Surge, O Flame!::Brother Corhyn — 5,500 runes":
-    "Liurnia of the Lakes::Incantations::Surge, O Flame!::Miriel — Fire Monks' Prayerbook",
-  "Roundtable Hold & Trades::Incantations::Black Flame::Brother Corhyn — 6,000 runes (Godskin Prayerbook)":
-    "Liurnia of the Lakes::Incantations::Black Flame::Miriel — Godskin Prayerbook",
-  "Roundtable Hold & Trades::Incantations::Black Flame Blade::Brother Corhyn — 7,500 runes (Godskin Prayerbook)":
-    "Liurnia of the Lakes::Incantations::Black Flame Blade::Miriel — Godskin Prayerbook",
-  "Roundtable Hold & Trades::Incantations::Lightning Spear::Brother Corhyn — 6,000 runes (Dragon Cult Prayerbook)":
-    "Liurnia of the Lakes::Incantations::Lightning Spear::Miriel — Dragon Cult Prayerbook",
-  "Roundtable Hold & Trades::Incantations::Honed Bolt::Brother Corhyn — 7,000 runes (Dragon Cult Prayerbook)":
-    "Liurnia of the Lakes::Incantations::Honed Bolt::Miriel — Dragon Cult Prayerbook",
-  "Roundtable Hold & Trades::Incantations::Electrify Armament::Brother Corhyn — 6,000 runes (Dragon Cult Prayerbook)":
-    "Liurnia of the Lakes::Incantations::Electrify Armament::Miriel — Dragon Cult Prayerbook",
-
-  // corrected in game: these ashes are in Nokstella, not Limgrave
-  "Limgrave::Spirit Ashes::Archer Ashes::corpse on a balcony (verify)":
-    "Nokstella & Lake of Rot::Spirit Ashes::Archer Ashes::corpse on a balcony",
-
-  // corrected in game: these ashes are in Nokron, not the Weeping Peninsula
-  "Weeping Peninsula::Spirit Ashes::Greatshield Soldier Ashes::corpse in a gravesite (verify)":
-    "Nokron & Siofra Aqueduct::Spirit Ashes::Greatshield Soldier Ashes::corpse in the graveyard, guarded by a Fallen Hawks Soldier",
-
-  // relabelled: Miriel's prayerbook-gated spells now name the book, not the price
-  "Liurnia of the Lakes::Incantations::Lord's Heal::Miriel at the Church of Vows — 8,000 runes":
-    "Liurnia of the Lakes::Incantations::Lord's Heal::Miriel — Two Fingers' Prayerbook",
-  "Liurnia of the Lakes::Incantations::Lord's Aid::Miriel at the Church of Vows — 2,500 runes":
-    "Liurnia of the Lakes::Incantations::Lord's Aid::Miriel — Two Fingers' Prayerbook",
-  "Liurnia of the Lakes::Incantations::Flame, Fall Upon Them::Miriel — 10,000 runes":
-    "Liurnia of the Lakes::Incantations::Flame, Fall Upon Them::Miriel — Giant's Prayerbook",
-  "Liurnia of the Lakes::Incantations::Giantsflame Take Thee::Miriel — 13,000 runes":
-    "Liurnia of the Lakes::Incantations::Giantsflame Take Thee::Miriel — Giant's Prayerbook",
-  "Liurnia of the Lakes::Incantations::Radagon's Rings of Light::Miriel — 7,500 runes":
-    "Liurnia of the Lakes::Incantations::Radagon's Rings of Light::Miriel — Golden Order Principia",
-  "Liurnia of the Lakes::Incantations::Law of Regression::Miriel — 10,000 runes":
-    "Liurnia of the Lakes::Incantations::Law of Regression::Miriel — Golden Order Principia",
-  "Liurnia of the Lakes::Incantations::Ancient Dragons' Lightning Spear::Miriel — 8,500 runes":
-    "Liurnia of the Lakes::Incantations::Ancient Dragons' Lightning Spear::Miriel — Ancient Dragon Prayerbook",
-  "Liurnia of the Lakes::Incantations::Ancient Dragons' Lightning Strike::Miriel — 10,000 runes":
-    "Liurnia of the Lakes::Incantations::Ancient Dragons' Lightning Strike::Miriel — Ancient Dragon Prayerbook"
+    "Liurnia of the Lakes::Bosses::Bell Bearing Hunter::Church of Vows (night)"
 };
 
 function migrateChecked() {
@@ -2973,14 +1397,6 @@ function migrateChecked() {
   DATA.forEach(z => z.places.forEach(p => {
     if (p.dungeon) validIds.add(itemId(z.zone, "Dungeons", p.name, null));
     (p.bosses || []).forEach(([n, l]) => validIds.add(itemId(z.zone, "Bosses", n, l)));
-    (p.keyItems || []).forEach(([n, l]) => validIds.add(itemId(z.zone, classifyKeyItem(n), n, l)));
-    const k = z.zone + "::" + p.name;
-    (GRACES[k] || []).forEach(g => validIds.add(itemId(z.zone, "Graces", g, null)));
-    (BOOKS[k] || []).forEach(([n, l]) => validIds.add(itemId(z.zone, "Key Items", n, l)));
-    (BELL_BEARINGS[k] || []).forEach(([n, l]) => validIds.add(itemId(z.zone, "Key Items", n, l)));
-    (SPIRIT_ASHES[k] || []).forEach(([n, l]) => validIds.add(itemId(z.zone, "Spirit Ashes", n, l)));
-    (SORCERIES[k] || []).forEach(([n, l]) => validIds.add(itemId(z.zone, "Sorceries", n, l)));
-    (INCANTATIONS[k] || []).forEach(([n, l]) => validIds.add(itemId(z.zone, "Incantations", n, l)));
   }));
   let changed = false;
   Object.keys(checked).forEach(id => {
@@ -2992,23 +1408,18 @@ function migrateChecked() {
       changed = true;
       return;
     }
-    // Try every combination of renamed zone and re-split category. "Key Items"
-    // was split into Talismans / Bolstering Materials / Key Items, and several
-    // zones were renamed earlier — an old enough save can need both at once.
+    // Several zones were renamed or split earlier, so retry under each old name.
+    // Anything still unmatched is left in place rather than deleted — that is
+    // what preserves ticks for the categories dropped in v8, so restoring a
+    // category would restore its progress with it.
     const parts = id.split("::");
-    const zoneCandidates = [parts[0], ...(ZONE_MIGRATIONS[parts[0]] || [])];
-    const catCandidates = parts[1] === "Key Items"
-      ? ["Key Items", "Talismans", "Bolstering Materials"]
-      : [parts[1]];
-    for (const zc of zoneCandidates) {
-      for (const cc of catCandidates) {
-        const newId = [zc, cc, ...parts.slice(2)].join("::");
-        if (newId !== id && validIds.has(newId)) {
-          checked[newId] = true;
-          delete checked[id];
-          changed = true;
-          return;
-        }
+    for (const zc of ZONE_MIGRATIONS[parts[0]] || []) {
+      const newId = [zc, ...parts.slice(1)].join("::");
+      if (newId !== id && validIds.has(newId)) {
+        checked[newId] = true;
+        delete checked[id];
+        changed = true;
+        return;
       }
     }
   });
@@ -3108,10 +1519,11 @@ function build() {
       strip.appendChild(lbl);
       QUESTS.filter(q => touching.has(q.name)).forEach(q => {
         const m = document.createElement("button");
-        m.className = "qmarker" + (q.steps[0][0] === z.zone ? " starts" : "");
+        // the "next"/"done" state depends on what is ticked, so refreshCounts
+        // owns it — this only builds the chip
+        m.className = "qmarker";
         m.dataset.quest = q.name;
         m.dataset.zone = z.zone;
-        m.title = (q.steps[0][0] === z.zone ? "Starts here. " : "") + "Open this questline";
         m.innerHTML = '<span class="qm-name"></span><span class="qm-count"></span>';
         m.querySelector(".qm-name").textContent = q.name;
         m.addEventListener("click", () => {
@@ -3178,18 +1590,7 @@ function build() {
       const pbody = document.createElement("div");
       pbody.className = "place-body";
 
-      const pkey = z.zone + "::" + place.name;
-      const graceItems = (GRACES[pkey] || []).map(g => [g, null]);
-      const ki = place.keyItems || [];
-      [["Bosses", place.bosses || []],
-       ["Talismans", ki.filter(([n]) => classifyKeyItem(n) === "Talismans")],
-       ["Bolstering Materials", ki.filter(([n]) => classifyKeyItem(n) === "Bolstering Materials")],
-       ["Key Items", ki.filter(([n]) => classifyKeyItem(n) === "Key Items")
-                       .concat(BOOKS[pkey] || [], BELL_BEARINGS[pkey] || [])],
-       ["Graces", graceItems],
-       ["Spirit Ashes", SPIRIT_ASHES[pkey] || []],
-       ["Sorceries", SORCERIES[pkey] || []],
-       ["Incantations", INCANTATIONS[pkey] || []]].forEach(([catName, items]) => {
+      [["Bosses", place.bosses || []]].forEach(([catName, items]) => {
         if (!items.length) return;
         const pcat = document.createElement("div");
         pcat.className = "pcat";
@@ -3302,7 +1703,9 @@ function refreshCounts() {
       total += pTotal; done += pDone;
     });
     zoneTotal += total; zoneDone += done;
-    zoneEl.querySelector(".zone-count").textContent = done + " / " + total;
+    // Roundtable Hold has no dungeons or bosses — it is kept only so its quest
+    // markers have a home, and "0 / 0" there reads as a bug rather than a fact.
+    zoneEl.querySelector(".zone-count").textContent = total ? done + " / " + total : "";
     const fill = zoneEl.querySelector(".zone-header .bar-fill");
     fill.style.width = total ? (100 * done / total) + "%" : "0%";
     fill.classList.toggle("complete", total > 0 && done === total);
@@ -3324,6 +1727,12 @@ function refreshCounts() {
   });
 
   // zone quest markers (done/total of that quest's steps in that zone)
+  //
+  // ✦ marks the zone holding the questline's *next* unticked step, so gold
+  // always means "you can act on this here now". Highlighting every zone with
+  // unfinished steps was considered and rejected: that is exactly the inverse
+  // of the green "done" state, so it would have added no information.
+  // Steps are ordered, so the first unticked one is the next one.
   document.querySelectorAll(".qmarker").forEach(m => {
     const q = QUESTS.find(x => x.name === m.dataset.quest);
     if (!q) return;
@@ -3333,8 +1742,12 @@ function refreshCounts() {
       total++;
       if (checked[questStepId(q.name, text)]) done++;
     });
+    const nextStep = q.steps.find(([, text]) => !checked[questStepId(q.name, text)]);
+    const isNext = !!nextStep && nextStep[0] === m.dataset.zone;
     m.querySelector(".qm-count").textContent = done + "/" + total;
     m.classList.toggle("done", total > 0 && done === total);
+    m.classList.toggle("next", isNext);
+    m.title = (isNext ? "Your next step in this questline is here. " : "") + "Open this questline";
   });
 
   function setBar(fillId, countId, done, total) {

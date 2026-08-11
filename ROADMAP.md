@@ -46,7 +46,8 @@
   with the zone it happens in. Steps sourced from Fextralife walkthroughs
   (Fire Knight Queelign's steps are from memory — his wiki page was thin).
 - **Zone quest markers**: each zone lists every questline that touches it with
-  a per-zone step count (✦ = starts here); clicking jumps to the quest card.
+  a per-zone step count (✦ = starts here — **changed in v9**, see below);
+  clicking jumps to the quest card.
 - Quest steps count toward overall progress (295 steps; total now 1244 items).
 
 ## Done (v7)
@@ -67,21 +68,59 @@
   (337 → 0); sticky zone headers.
 - Repo published to <https://github.com/Paraiga/elden-ring-tracker>.
 
-## Future features (add incrementally)
-1. **Weapons and armor** — the last major piece of findable equipment. Per-dungeon
-   wiki pages have exact locations; the overworld portion is the hard part.
-2. **Upgrade materials** — Smithing / Somber Smithing Stones, Ghost and Grave
-   Gloveworts, Scadutree Fragments, Revered Spirit Ash. The classifier already
-   routes all of these into Bolstering Materials.
-3. **Cracked pots / ritual pots / perfume bottles** — already routed to Key Items.
-4. **Legacy dungeon loot checklists** — largely subsumed by item 1.
+## Done (v8) — scope cut
+The item tracking added in v2–v7 was **removed**. Checking off ~1,200 pickups was
+more administration than the tracker was worth in practice.
 
-Deliberately not doing: splitting oversized "Open World" blocks by sub-area.
+Removed: Graces (414), Talismans (157), Key Items (163), Bolstering Materials
+(53), Spirit Ashes (84), Sorceries (84), Incantations (129) — along with the
+`GRACES` / `SPIRIT_ASHES` / `SORCERIES` / `INCANTATIONS` / `BOOKS` /
+`BELL_BEARINGS` maps, every `keyItems` array in `DATA`, and `classifyKeyItem()`.
+
+Kept: **Dungeons (104) and Bosses (200)** in the zones view, and the **Quests
+view unchanged** (295 steps, 34 questlines), including the per-zone quest markers.
+
+Consequences worth knowing:
+- `CATEGORIES` is now just `["Dungeons", "Bosses"]`; the filter chips follow it.
+- Two places lost all their content and were dropped: `Abyssal Woods :: Open
+  World`, and `Roundtable Hold & Trades :: Roundtable Hold`. The **Roundtable
+  Hold zone itself is kept with an empty `places: []`**, because 10 questlines
+  link to it — it renders as a quest-marker-only card, and `refreshCounts()`
+  blanks the count rather than showing "0 / 0".
+- `ID_MIGRATIONS` was pruned to the two boss renames; the entries for spells and
+  key items were dead once those categories went.
+- **No saved progress was destroyed.** `migrateChecked()` leaves unrecognised IDs
+  in `localStorage` untouched, so the ~150 grace/item/spell ticks in an existing
+  save are dormant, not deleted — restoring a category restores its progress.
+  Verified against the 2026-08-10 backup: 18 dungeons, 33 bosses and 40 quest
+  steps all survived, and all 241 original ticks were still in storage after.
+
+## Done (v9)
+- **Zone quest chips now mark what is actionable.** ✦ used to mean "this
+  questline starts here", which was static — a chip lit up on day one and never
+  changed. It now marks the zone containing the questline's **next unticked
+  step**, so gold means "you can act on this here, now", and the ✦ walks from
+  zone to zone as you tick steps off.
+- Considered and rejected: lighting up every zone with unfinished steps. That is
+  the exact inverse of the existing green "done" state, so it would have added no
+  information — at 40/295 quest completion nearly every chip would have been gold.
+  With the "next step" rule, 33 of 127 chips are lit.
+- The "starts here" marker was dropped from the chips deliberately. That
+  information is still on the quest card itself, which reads "starts in <zone>".
+- `build()` no longer sets any state class on a chip; `refreshCounts()` owns
+  `.next` and `.done`, so the markers update live as steps are ticked. `.next`
+  and `.done` are mutually exclusive by construction.
+
+## Future features
+Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the
+old roadmap; the v8 cut is the decision not to do them.
+
+Also deliberately not doing: splitting oversized "Open World" blocks by sub-area.
 
 ## Notes
 - **See `HANDOVER.md`** for current state, data conventions, the save-ID
-  migration rule, the 22 `(verify)`-tagged entries, and GitHub Pages setup.
-- Data lives in `DATA` plus the `"Zone::Place"`-keyed maps in `index.html`.
+  migration rule, and GitHub Pages setup.
+- Data lives in `DATA` and `QUESTS` in `index.html`.
 - Checkmarks are keyed `Zone::Category::Name::Location`, so renaming an entry
   un-checks it — add an `ID_MIGRATIONS` line whenever an entry moves or is
   relabelled, and verify by seeding the old ID.
