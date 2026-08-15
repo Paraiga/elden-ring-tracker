@@ -449,15 +449,20 @@ const DATA = [
       ["Royal Revenant", "Kingsrealm Ruins"],
       ["Omenkiller", "Village of the Albinaurics"],
       ["Glintstone Dragon Smarag", "west of the Academy"],
-      ["Erdtree Avatar", "Minor Erdtree (east Liurnia)"],
+      ["Erdtree Avatar", "Minor Erdtree, Uld Palace Ruins (northeast)"],
+      ["Erdtree Avatar", "Minor Erdtree, Converted Tower (southwest)"],
+      ["Godskin Noble", "Divine Tower of Liurnia bridge (inverted Study Hall)"],
       ["Adan, Thief of Fire", "Malefactor's Evergaol"],
       ["Bols, Carian Knight", "Cuckoo's Evergaol"],
       ["Onyx Lord", "Royal Grave Evergaol"],
       ["Tibia Mariner", "east Liurnia (near Jarburg)"],
-      ["Night's Cavalry", "Liurnia Highway (night)"],
+      ["Night's Cavalry", "Gate Town Bridge (night)"],
+      ["Night's Cavalry", "Bellum Highway (night)"],
       ["Deathbird", "Scenic Isle (night)"],
       ["Death Rite Bird", "Gate Town (night)"],
-      ["Bell Bearing Hunter", "Church of Vows (night)"]
+      ["Bell Bearing Hunter", "Church of Vows (night)"],
+      ["Preceptor Miriam", "Carian Study Hall"],
+      ["Festering Fingerprint Vyke", "Church of Inhibition (invader)"]
     ] }
 ]},
 
@@ -506,7 +511,8 @@ const DATA = [
       ["Putrid Avatar", "Minor Erdtree"],
       ["Decaying Ekzykes", "Caelid Highway (field)"],
       ["Night's Cavalry", "southern Caelid Highway (night)"],
-      ["Death Rite Bird", "southern Aeonia Swamp (night)"]
+      ["Death Rite Bird", "southern Aeonia Swamp (night)"],
+      ["Anastasia, Tarnished-Eater", "Smoldering Church (invader)"]
     ] }
 ]},
 
@@ -522,7 +528,8 @@ const DATA = [
   { name: "Open World", dungeon: false,
     bosses: [
       ["Black Blade Kindred", "Bestial Sanctum"],
-      ["Erdtree Avatar", "Minor Erdtree"],
+      ["Putrid Avatar", "Minor Erdtree"],
+      ["Flying Dragon Greyll", "Farum Greatbridge"],
       ["Night's Cavalry", "Dragonbarrow (night)"],
       ["Bell Bearing Hunter", "Isolated Merchant's Shack (night)"]
     ] }
@@ -1389,7 +1396,17 @@ const ID_MIGRATIONS = {
     "Ainsel River::Bosses::Dragonkin Soldier of Nokstella::Ainsel River Main",
   // reverts a bad edit: this hunter spawns at night like the other three
   "Liurnia of the Lakes::Bosses::Bell Bearing Hunter::Church of Vows (daytime)":
-    "Liurnia of the Lakes::Bosses::Bell Bearing Hunter::Church of Vows (night)"
+    "Liurnia of the Lakes::Bosses::Bell Bearing Hunter::Church of Vows (night)",
+  // Liurnia has two of each of these; the old single entries were the northeast
+  // Erdtree Avatar and the southern Night's Cavalry, relabelled to disambiguate
+  "Liurnia of the Lakes::Bosses::Erdtree Avatar::Minor Erdtree (east Liurnia)":
+    "Liurnia of the Lakes::Bosses::Erdtree Avatar::Minor Erdtree, Uld Palace Ruins (northeast)",
+  "Liurnia of the Lakes::Bosses::Night's Cavalry::Liurnia Highway (night)":
+    "Liurnia of the Lakes::Bosses::Night's Cavalry::Gate Town Bridge (night)",
+  // both Minor Erdtree avatars in the Caelid map are the rot variant; the
+  // Dragonbarrow one was listed as the plain Erdtree Avatar by mistake
+  "Greyoll's Dragonbarrow::Bosses::Erdtree Avatar::Minor Erdtree":
+    "Greyoll's Dragonbarrow::Bosses::Putrid Avatar::Minor Erdtree"
 };
 
 function migrateChecked() {

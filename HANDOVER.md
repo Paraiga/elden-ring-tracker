@@ -16,15 +16,71 @@ Progress saves to `localStorage` on every click.
 
 ## 2. Current state
 
-**304 world items across 37 zones (123 place blocks) + 295 quest steps across
+**311 world items across 37 zones (123 place blocks) + 295 quest steps across
 34 questlines.** The header shows these as two independent progress bars — they
 are deliberately *not* summed, since quest progress is a different kind of thing.
 
 | Category | Count |
 | --- | ---: |
-| Bosses | 200 |
+| Bosses | 207 |
 | Dungeons (the "cleared" checkbox on each dungeon block) | 104 |
-| **Total** | **304** |
+| **Total** | **311** |
+
+### Liurnia recheck, 2026-08-14
+
+Prompted by two bosses found in play that the tracker did not list. Rechecking
+the whole Liurnia Open World block against Fextralife's per-boss pages turned up
+five additions and two relabels — all in `Liurnia of the Lakes` → `Open World`:
+
+- **Erdtree Avatar, Converted Tower (southwest)** — new. Liurnia has *two*
+  avatars; only the northeast one was listed.
+- **Night's Cavalry, Bellum Highway (night)** — new. Liurnia has *two*; only the
+  southern one was listed.
+- **Godskin Noble, Divine Tower of Liurnia bridge** — new, and not reported by
+  the player. Only reachable after inverting the Carian Study Hall, which is
+  probably why it was missed originally.
+- **Preceptor Miriam** (Carian Study Hall) and **Festering Fingerprint Vyke**
+  (Church of Inhibition) — new. Named hostile NPCs rather than true field
+  bosses, added by request. They live in `Open World` rather than getting their
+  own place blocks, so the dungeon count is unchanged at 104.
+- The two pre-existing entries were relabelled to disambiguate them from their
+  new twins (`Minor Erdtree (east Liurnia)` → `…Uld Palace Ruins (northeast)`,
+  `Liurnia Highway (night)` → `Gate Town Bridge (night)`), with matching
+  `ID_MIGRATIONS` entries. Both verified by the seed-and-reload method in §3.
+
+Worth knowing for future rechecks: a *count* per region ("Liurnia has two
+Erdtree Avatars") is the thing list pages get right and the thing this data was
+missing. Checking counts per boss type is a faster way to find gaps than
+re-reading region pages.
+
+### Caelid recheck, 2026-08-15
+
+Same exercise as Liurnia, on the Caelid map (both the `Caelid` and `Greyoll's
+Dragonbarrow` zones). Two additions and one correction:
+
+- **Anastasia, Tarnished-Eater**, `Caelid` → `Open World`, `Smoldering Church
+  (invader)` — new. The one NPC invader on the Caelid map; same treatment as
+  Vyke in Liurnia (lives in `Open World`, no place block of its own).
+- **Flying Dragon Greyll**, `Greyoll's Dragonbarrow` → `Open World`, `Farum
+  Greatbridge` — new. Genuinely missed. Farum Greatbridge is unmarked on the
+  map, which is probably why.
+- **Erdtree Avatar → Putrid Avatar** at the Dragonbarrow Minor Erdtree — a
+  mislabel, not a gap. Both Minor Erdtrees on the Caelid map hold the rot
+  variant. `ID_MIGRATIONS` entry added and verified by the seed-and-reload
+  method in §3.
+
+Counts checked per boss type and all correct as they stood: two Night's Cavalry
+(Caelid Highway, Dragonbarrow), one Death Rite Bird (southern Aeonia Swamp), one
+Bell Bearing Hunter (Isolated Merchant's Shack). No Deathbird on this map.
+
+**Deliberately not added: Lion Guardians.** There are four on the Caelid map —
+two at Redmane Castle, one at Fort Gael, one roaming near the Impassable
+Greatbridge — plus one at Stormveil. They are elite enemies, not bosses: no fog
+gate, no health bar, they respawn. Tracking them means opening an "elite
+enemies" category game-wide (Erdtree Burial Watchdogs, Crucible Knights,
+Ulcerated Tree Spirits, Tree Sentinels, and so on run to well over a hundred),
+which is the same kind of growth the v8 cut existed to stop. Ask before adding
+any of them.
 
 ### The v8 scope cut — read this before adding anything
 
