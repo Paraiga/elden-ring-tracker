@@ -587,22 +587,31 @@ const DATA = [
       ["Necromancer Garris", "Sage's Cave"]
     ] },
   { name: "Perfumer's Grotto", dungeon: true,
-    bosses: [] },
+    bosses: [["Omenkiller & Miranda the Blighted Bloom", "Perfumer's Grotto"]] },
   { name: "Sainted Hero's Grave", dungeon: true,
-    bosses: [["Ancient Hero of Zamor", "Sainted Hero's Grave"]] },
+    bosses: [
+      ["Black Knife Assassin", "Sainted Hero's Grave entrance"],
+      ["Ancient Hero of Zamor", "Sainted Hero's Grave"]
+    ] },
+  { name: "Wyndham Catacombs", dungeon: true,
+    bosses: [["Erdtree Burial Watchdog", "Wyndham Catacombs"]] },
+  { name: "Unsightly Catacombs", dungeon: true,
+    bosses: [["Perfumer Tricia & Misbegotten Warrior", "Unsightly Catacombs"]] },
   { name: "Shaded Castle", dungeon: true,
     bosses: [["Elemer of the Briar", "Shaded Castle"]] },
   { name: "Open World", dungeon: false,
     bosses: [
       ["Godefroy the Grafted", "Golden Lineage Evergaol"],
       ["Godskin Apostle", "Dominula, Windmill Village"],
-      ["Wormface", "near Minor Erdtree"],
-      ["Erdtree Avatar", "Minor Erdtree"],
+      ["Wormface", "Minor Erdtree"],
+      ["Demi-Human Queen Gilika", "Lux Ruins basement"],
+      ["Tibia Mariner", "Wyndham Ruins"],
       ["Fallingstar Beast", "Altus Tunnel entrance crater"],
       ["Ancient Dragon Lansseax", "Rampartside Path (field)"],
       ["Tree Sentinel Duo", "Outer Wall Phantom Tree"],
       ["Night's Cavalry", "Altus Highway Junction (night)"],
-      ["Sanguine Noble", "Writheblood Ruins (invasion)"]
+      ["Sanguine Noble", "Writheblood Ruins (invasion)"],
+      ["Eleonora, Violet Bloody Finger", "Second Church of Marika (invader)"]
     ] }
 ]},
 
@@ -611,10 +620,6 @@ const DATA = [
     bosses: [["Kindred of Rot Duo", "Seethewater Cave"]] },
   { name: "Volcano Cave", dungeon: true,
     bosses: [["Demi-Human Queen Margot", "Volcano Cave"]] },
-  { name: "Wyndham Catacombs", dungeon: true,
-    bosses: [["Erdtree Burial Watchdog", "Wyndham Catacombs"]] },
-  { name: "Unsightly Catacombs", dungeon: true,
-    bosses: [["Perfumer Tricia & Misbegotten Warrior", "Unsightly Catacombs"]] },
   { name: "Gelmir Hero's Grave", dungeon: true,
     bosses: [["Red Wolf of the Champion", "Gelmir Hero's Grave"]] },
   { name: "Open World", dungeon: false,
@@ -622,7 +627,6 @@ const DATA = [
       ["Magma Wyrm", "Fort Laiedd / Seethewater Terminus"],
       ["Full-Grown Fallingstar Beast", "Ninth Mt. Gelmir Campsite crater"],
       ["Ulcerated Tree Spirit", "Minor Erdtree"],
-      ["Tibia Mariner", "Wyndham Ruins"],
       ["Demi-Human Queen Maggie", "Hermit Village (field)"]
     ] }
 ]},
@@ -1406,7 +1410,22 @@ const ID_MIGRATIONS = {
   // both Minor Erdtree avatars in the Caelid map are the rot variant; the
   // Dragonbarrow one was listed as the plain Erdtree Avatar by mistake
   "Greyoll's Dragonbarrow::Bosses::Erdtree Avatar::Minor Erdtree":
-    "Greyoll's Dragonbarrow::Bosses::Putrid Avatar::Minor Erdtree"
+    "Greyoll's Dragonbarrow::Bosses::Putrid Avatar::Minor Erdtree",
+  // Altus recheck: the two Wyndham-area catacombs and the Wyndham Ruins Tibia
+  // Mariner are on the Altus Plateau, not Mt. Gelmir
+  "Mt. Gelmir::Dungeons::Wyndham Catacombs":
+    "Altus Plateau::Dungeons::Wyndham Catacombs",
+  "Mt. Gelmir::Bosses::Erdtree Burial Watchdog::Wyndham Catacombs":
+    "Altus Plateau::Bosses::Erdtree Burial Watchdog::Wyndham Catacombs",
+  "Mt. Gelmir::Dungeons::Unsightly Catacombs":
+    "Altus Plateau::Dungeons::Unsightly Catacombs",
+  "Mt. Gelmir::Bosses::Perfumer Tricia & Misbegotten Warrior::Unsightly Catacombs":
+    "Altus Plateau::Bosses::Perfumer Tricia & Misbegotten Warrior::Unsightly Catacombs",
+  "Mt. Gelmir::Bosses::Tibia Mariner::Wyndham Ruins":
+    "Altus Plateau::Bosses::Tibia Mariner::Wyndham Ruins",
+  // there is no Erdtree Avatar on the Altus map; Wormface guards the Minor Erdtree
+  "Altus Plateau::Bosses::Wormface::near Minor Erdtree":
+    "Altus Plateau::Bosses::Wormface::Minor Erdtree"
 };
 
 function migrateChecked() {

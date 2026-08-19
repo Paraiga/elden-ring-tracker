@@ -16,15 +16,15 @@ Progress saves to `localStorage` on every click.
 
 ## 2. Current state
 
-**311 world items across 37 zones (123 place blocks) + 295 quest steps across
+**314 world items across 37 zones (123 place blocks) + 295 quest steps across
 34 questlines.** The header shows these as two independent progress bars — they
 are deliberately *not* summed, since quest progress is a different kind of thing.
 
 | Category | Count |
 | --- | ---: |
-| Bosses | 207 |
+| Bosses | 210 |
 | Dungeons (the "cleared" checkbox on each dungeon block) | 104 |
-| **Total** | **311** |
+| **Total** | **314** |
 
 ### Liurnia recheck, 2026-08-14
 
@@ -81,6 +81,42 @@ enemies" category game-wide (Erdtree Burial Watchdogs, Crucible Knights,
 Ulcerated Tree Spirits, Tree Sentinels, and so on run to well over a hundred),
 which is the same kind of growth the v8 cut existed to stop. Ask before adding
 any of them.
+
+### Altus Plateau recheck, 2026-08-19
+
+Prompted by the player walking into Unsightly Catacombs and not finding it on
+the Altus card. It was there, but filed under `Mt. Gelmir`. Fextralife puts it —
+and two other Wyndham-area items — on the Altus Plateau, so three entries moved
+zone:
+
+- **Wyndham Catacombs** (Erdtree Burial Watchdog) and **Unsightly Catacombs**
+  (Perfumer Tricia & Misbegotten Warrior), `Mt. Gelmir` → `Altus Plateau`.
+- **Tibia Mariner**, `Mt. Gelmir` → `Altus Plateau` → `Open World`, Wyndham
+  Ruins. The ruins are on the plateau; only the catacombs climb toward Gelmir.
+
+Four genuine gaps and one phantom:
+
+- **Omenkiller & Miranda the Blighted Bloom**, Perfumer's Grotto — new. The
+  grotto was listed as a dungeon with an empty boss list.
+- **Demi-Human Queen Gilika**, `Open World`, Lux Ruins basement — new. Third
+  Demi-Human Queen after Margot (Volcano Cave) and Maggie (Hermit Village).
+- **Black Knife Assassin**, Sainted Hero's Grave entrance — new. She waits
+  outside the grave rather than at the end of it, so it now holds two bosses.
+- **Eleonora, Violet Bloody Finger**, `Open World`, Second Church of Marika —
+  new. Same NPC-invader treatment as Vyke and Anastasia.
+- **Erdtree Avatar at the Minor Erdtree — removed.** There is no Erdtree Avatar
+  anywhere on the Altus map. Wormface is the Minor Erdtree boss and was already
+  listed, as "near Minor Erdtree"; relabelled to "Minor Erdtree" and the
+  duplicate Avatar entry deleted.
+
+All six affected IDs have `ID_MIGRATIONS` entries, verified by the
+seed-and-reload method in §3. 311 → 314 items (207 → 210 bosses). The dungeon
+count stays at 104, since the two catacombs moved rather than appeared.
+
+Counts checked per boss type and correct as they stood: one Night's Cavalry
+(Altus Highway Junction), one Wormface, one Fallingstar Beast, no Deathbird and
+no Death Rite Bird on this map. Lansseax has two encounters (Abandoned Coffin
+and Rampartside Path) but is one boss, so stays one entry.
 
 ### The v8 scope cut — read this before adding anything
 
