@@ -49,7 +49,7 @@ you the prompt to hand an LLM; paste the answer back into the tab (or load it
 from a `.json` file) and it renders.
 
 **Copy the prompt**, then **Download item data (CSV)** and attach that file to
-the same chat. The CSV is every real item in the game — 1,271 rows across
+the same chat. The CSV is every real item in the game — 1,270 rows across
 weapons, armor, talismans, spells, ashes of war, spirit ashes and crystal tears
 — and the prompt tells the model to choose only from it, so it picks from real
 items instead of recalling them. For weapons the file also carries what each one
@@ -102,12 +102,12 @@ markdown fences, since no two LLM answers are shaped quite alike.
 
 ### Equipment checking
 
-The tab also checks that the gear a build names actually exists, against 1,271
+The tab also checks that the gear a build names actually exists, against 1,270
 real item names embedded in the page:
 
 | Checked | Partial | Not checked |
 | --- | --- | --- |
-| Weapons (479, including shields, staves, seals and bows) | Armor (188 pieces, 46 sets) | "Other" |
+| Weapons (479, including shields, staves, seals and bows) | Armor (187 pieces, 46 sets) | "Other" |
 | Spells (213), Talismans (154) | | |
 | Ashes of War (116), Spirit Ashes (84), Crystal Tears (37) | | |
 
@@ -138,6 +138,15 @@ max upgrade, and passive status buildup. So a verified weapon shows what it is:
 Every weapon also carries where to find it, parsed from the wiki's Acquisition
 sections, so the location cross-check works for weapons too: name the wrong
 region and the tab shows the right one against it.
+
+Every other table is filled in the same way, so each row says what the item
+actually is — a spell's FP cost, memory slots and the Intelligence it needs; a
+talisman's effect and weight; an armor piece's weight and poise; a spirit ash's
+summon cost.
+
+**Spells are requirement-checked too.** A sorcerer plan that stops at 45
+Intelligence is told it can neither wield Lusat's Staff (52) nor cast Comet
+Azur (60).
 
 **And the tab checks that your build can actually wield its own weapons.** If
 the final phase never reaches 23 Intelligence, a plan built around Moonveil is

@@ -740,6 +740,63 @@ location stays quiet.
 
 The combined CSV download is now 115KB.
 
+### Filling in the rest of the data, 2026-08-22
+
+Every table now carries what the wiki has for it, from the same MediaWiki
+pipeline the weapon locations used. The infoboxes turned out to be the richest
+seam: they are uniform, machine-written, and cover every category.
+
+| table | added |
+| --- | --- |
+| weapons | weight, skill, location (479/479 location, 478 weight+skill) |
+| armor | location, weight, poise and nine defence values (187/187) |
+| talismans | effect, weight (153/154) |
+| physick | effect (37/37) |
+| spells | category, effect, fp, slots, reqInt, reqFai, reqArc (213/213) |
+| ashes | location, affinity (116/116), fp (39/116) |
+| spirits | effect, cost (82/84), location (78/84) |
+
+**The parser splits infobox parameters on top-level `|` only.** Nested
+templates and `[[links]]` contain pipes of their own; splitting naively
+shreds half the values. Same class of bug as the heading `=` problem from the
+location pass.
+
+**Requirement checking now covers spells.** A spell's int/fai/arc requirement is
+the same idea as a weapon's and lives in the same three `req*` columns, so
+`requirementIssues()` generalises by iterating `REQ_CATS` — `{weapons: "wield",
+spells: "cast"}` — and picking the attribute subset per category. A sorcerer
+build that stops at 45 Intelligence is now told it can neither wield Lusat's
+Staff (52) nor cast Comet Azur (60).
+
+`weaponMeta()` became `itemMeta(catKey, ref)` for the same reason: every table
+has something worth showing on the row now, not just weapons.
+
+**The wiki caught two errors in our own armor data**, which is the real argument
+for cross-checking against an external source rather than trusting recall:
+
+- `Haligtree Helm/Armor/Gauntlets/Greaves` are actually **`Haligtree Knight`**
+  pieces. Renamed.
+- **`White Reed Helm` does not exist.** The White Reed set has three pieces; its
+  head is the separately named Okina Mask, which was already in the table.
+  Removed, so armor is 187 rows and the total is 1,270.
+
+Against that, all 187 recalled armor **slots** matched the wiki exactly, so the
+slot data was sound even where two names were not.
+
+**Six items need explicit title overrides** (`TITLE_OVERRIDES` in the write
+script) because their own name does not reach their page: `Beast Claw` is both a
+weapon and an incantation and resolves to a disambiguation, `Minor Erdtree` and
+`Land of Shadow` collide with region pages, `Battlemage Hugues` resolves to the
+enemy, and the wiki files `Perfumer Tricia Ashes` without its suffix.
+
+**Genuinely blank, not broken:** `Fine Crucible Feather Talisman` has empty
+effect and weight fields on the wiki itself; `Latenna the Albinauric` and
+`Battlemage Hugues` have NPC pages rather than spirit-ash infoboxes; and 77 of
+116 Ashes of War list no FP cost because they have none.
+
+The CSV download is now 190KB across 35 columns. That is large for a paste and
+irrelevant for an attachment, which is why it is a download.
+
 ## 7. Repo notes
 
 - Git identity is set **repo-locally** (`Paraiga` /

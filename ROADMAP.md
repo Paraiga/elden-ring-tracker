@@ -294,29 +294,55 @@ Consequences worth knowing:
   correct location stays quiet.
 - Self-test unchanged: 1,271 rows, zero failures. The CSV download is now 115KB.
 
+## Done (v18) — every table filled in
+- **All seven tables now carry real data**, from the wiki's infoboxes via the
+  same MediaWiki pipeline the weapon locations used:
+  - **weapons** — weight, default skill, location
+  - **armor** — location, weight, poise and nine defence values
+  - **talismans** — effect and weight
+  - **crystal tears** — effect
+  - **spells** — sorcery/incantation, effect, FP, memory slots, and the
+    int/fai/arc needed to cast
+  - **ashes of war** — location and default affinity
+  - **spirit ashes** — effect and summon cost
+- **Requirement checking now covers spells.** A spell's int/fai/arc requirement
+  is the same idea as a weapon's and lives in the same `req*` columns, so the
+  check generalises. A sorcerer stopping at 45 Intelligence is told it can
+  neither wield Lusat's Staff (52) nor cast Comet Azur (60).
+- Rows say what an item *is*, in every category: `Sorcery · needs 60 Int ·
+  40 FP · 3 slots · Fires a tremendous comet within a starry torrent`,
+  `head · Snow Witch set · 2.2 wt · 1 poise`, `660 HP · Summons Mimic Tear
+  spirit`.
+- **The wiki caught two errors in our own armor names.** The Haligtree pieces
+  are `Haligtree Knight ...`, and `White Reed Helm` does not exist — that set
+  has three pieces and the separately named Okina Mask for a head. Armor is now
+  187 rows, and the total 1,270. All 187 recalled slots matched the wiki exactly.
+- Six items need explicit title overrides where their name collides with a
+  region, an enemy or another item — `Beast Claw` is both a weapon and an
+  incantation. Recorded in HANDOVER.
+- Self-test still exact: 1,270 rows, zero failures. CSV download 190KB,
+  35 columns.
+
 ### Where this was heading
 Of the five steps sketched on 2026-08-22: **(1) stat maths** ✔, **(2) item
 existence and location checking** ✔, **(3) grounded generation** ✔, (4) in-tool
 generation via an API key — **deliberately not doing**, **(5) attack-rating
-optimisation** — reachable, and the largest remaining piece of work.
+optimisation** — the only large piece left.
 
-The wiki pipeline built here is reusable, and that changes the order of what is
-cheap. Remaining gaps, in rough order of value:
+The data gaps that remain are small and mostly not fillable from these sources:
 
-- **Spell requirements** — the spells table is still name and location only, so
-  a build asking for a spell the plan cannot cast is not caught. The params have
-  the numbers; it is the weapon check one table over.
-- **Armor** — still 188 names with slot and set, no stats and no locations, and
-  still the one `PARTIAL_REF` table. Both the params (`EquipParamProtector`) and
-  the wiki pipeline could fill it.
-- **Ash of War locations** — the ashes table is names only, and the same
-  Acquisition parser would fill it.
-- **Weapon weight** — absent from the regulation dump that was used.
+- **Ash of War FP cost** — 39 of 116; the rest have no cost to list.
+- **Which weapons an Ash of War fits** — not in the infobox; would need the
+  params, and is the one genuinely useful gap left.
+- **A handful of blanks the wiki itself does not fill** — one talisman's effect,
+  two spirit ashes whose pages are NPC pages.
+- **Armor beyond the common sets** — still `PARTIAL_REF`, still 46 sets. The
+  pipeline could fill the rest if the names were sourced first.
 
 Step 5 still needs `calcCorrectGraphs`, `attackElementCorrects`,
-`reinforceTypes` and base attack values, all of which that same dump already
-contains. It would turn the tab from *checking* a build into *ranking* weapons
-for one, and it remains a project rather than a feature: the formula has real
+`reinforceTypes` and base attack values, all in the regulation dump already
+used. It would turn the tab from *checking* a build into *ranking* weapons for
+one, and remains a project rather than a feature: the formula has real
 subtleties and being slightly wrong produces confident nonsense.
 
 ## Future features
