@@ -2016,6 +2016,633 @@ document.getElementById("reset-btn").addEventListener("click", () => {
   }
 });
 
+// ============================================================================
+// ITEM REFERENCE DATA
+//
+// Names and locations for checking what a build claims against what the game
+// actually has. This is a lookup table the code consults — it is never
+// rendered as a checklist, which is the line between this and the v8 cut.
+//
+// Talismans, spells and spirit ashes were recovered from the v7 commit
+// (453d2de), where they had already been sourced and corrected against the
+// wikis over several sessions. Counts match the published totals.
+// ============================================================================
+// Talismans, with where each is found (154)
+const REF_TALISMANS = [
+ ["Flamedrake Talisman","Limgrave — Groveside Cave — Beastman drop"],
+ ["Blue Dancer Charm","Limgrave — Highroad Cave — Guardian Golem drop"],
+ ["Roar Medallion","Limgrave Tunnels — Stonedigger Troll drop"],
+ ["Assassin's Crimson Dagger","Limgrave — Deathtouched Catacombs — Black Knife Assassin"],
+ ["Erdtree's Favor","Limgrave — Fringefolk Hero's Grave, past the flame trap"],
+ ["Green Turtle Talisman","Limgrave — Summonwater Village, chest behind imp statue"],
+ ["Haligdrake Talisman","Limgrave — Stranded Graveyard corpse"],
+ ["Axe Talisman","Limgrave — Mistwood Ruins cellar"],
+ ["Hammer Talisman","Limgrave — Recusant Henricus invasion, Stormhill"],
+ ["Lance Talisman","east of the Limgrave colosseum"],
+ ["Arrow's Reach Talisman","Limgrave — chest in the tower beside Stormgate"],
+ ["Blue-Feathered Branchsword","Limgrave — Deathbird at Warmaster's Shack"],
+ ["Sacrificial Twig","Limgrave — corpse west of Mistwood Ruins"],
+ ["Warrior Jar Shard","Limgrave — kill Alexander early (alternative to Shard of Alexander)"],
+ ["Viridian Amber Medallion","Weeping Peninsula — Tombsward Cave — Miranda drop"],
+ ["Spelldrake Talisman","Weeping Peninsula — Earthbore Cave — Runebear drop"],
+ ["Twinblade Talisman","Weeping Peninsula — Castle Morne, tower chest"],
+ ["Crimson Amber Medallion","Weeping Peninsula — nomadic merchant west of Oridys's Rise"],
+ ["Radagon's Scarseal","Weeping Evergaol — Ancient Hero of Zamor"],
+ ["Arsenal Charm","Stormveil Castle — given by Nepheli Loux after Godrick"],
+ ["Boltdrake Talisman","Stormveil Castle — corpse near the rampart toward Limgrave Tower Bridge"],
+ ["Prince of Death's Pustule","Stormveil Castle — lowest cellar level"],
+ ["Curved Sword Talisman","Stormveil Castle — chest in the Banished Knight hall"],
+ ["Claw Talisman","Stormveil Castle — atop the rooftop towers"],
+ ["Winged Sword Insignia","Liurnia of the Lakes — Stillwater Cave — Cleanrot Knight"],
+ ["Cerulean Amber Medallion","Liurnia of the Lakes — Lakeside Crystal Cave — Bloodhound Knight"],
+ ["Spear Talisman","Liurnia of the Lakes — Lakeside Crystal Cave chest"],
+ ["Assassin's Cerulean Dagger","Liurnia of the Lakes — Black Knife Catacombs — Black Knife Assassin"],
+ ["Cerulean Seed Talisman","Liurnia of the Lakes — Carian Study Hall"],
+ ["Stargazer Heirloom","top of the Divine Tower of Liurnia"],
+ ["Two Fingers Heirloom","Liurnia of the Lakes — Purified Ruins chest"],
+ ["Pearldrake Talisman","Liurnia of the Lakes — The Four Belfries"],
+ ["Stalwart Horn Charm","near the Walking Mausoleum, east Liurnia"],
+ ["Companion Jar","Liurnia of the Lakes — Jar Bairn's quest, Jarburg"],
+ ["Carian Filigreed Crest","Liurnia of the Lakes — bought from War Counselor Iji"],
+ ["Magic Scorpion Charm","Liurnia of the Lakes — Seluvis's quest (Amber Starlight)"],
+ ["Crucible Knot Talisman","Liurnia of the Lakes — Omenkiller drop, Village of the Albinaurics"],
+ ["Red-Feathered Branchsword","Liurnia of the Lakes — Deathbird northeast of Scenic Isle"],
+ ["Shabriri's Woe","Liurnia of the Lakes — Frenzied Flame Village corpse"],
+ ["Cerulean Amber Medallion +2","Moonlight Altar — Lunar Estate Ruins chest (after Astel)"],
+ ["Graven-School Talisman","Academy of Raya Lucaria — hidden room before the Debate Parlor"],
+ ["Radagon Icon","Academy of Raya Lucaria — chest on the Debate Parlor second floor"],
+ ["Longtail Cat Talisman","Academy of Raya Lucaria — lowest level of the water wheel"],
+ ["Faithful's Canvas Talisman","Caelid — Sellia Crystal Tunnel corpse"],
+ ["Gold Scarab","Caelid — Abandoned Cave — Cleanrot Knight duo"],
+ ["Starscourge Heirloom","Caelid — Fort Gael"],
+ ["Prosthesis-Wearer Heirloom","Caelid — from Gowry — Millicent's quest"],
+ ["Spelldrake Talisman +1","Caelid — Sellia, Town of Sorcery — sealed rooftop chest"],
+ ["Arrow's Sting Talisman","Caelid — chest atop the tower near the Impassable Greatbridge"],
+ ["Flock's Canvas Talisman","Caelid — Gowry, after Millicent's quest"],
+ ["Sacred Scorpion Charm","Caelid — Anastasia invasion near the Smoldering Church"],
+ ["Flamedrake Talisman +2","Greyoll's Dragonbarrow — Dragonbarrow Cave — Beastman duo"],
+ ["Bull-Goat's Talisman","Greyoll's Dragonbarrow — Dragonbarrow Cave side chamber"],
+ ["Radagon's Soreseal","Greyoll's Dragonbarrow — Fort Faroth, down the ladder"],
+ ["Great-Jar's Arsenal","Greyoll's Dragonbarrow — defeat the Great-Jar's three knights"],
+ ["Dragoncrest Shield Talisman","Greyoll's Dragonbarrow — cliff ledge near the Bestial Sanctum"],
+ ["Marika's Scarseal","Siofra River — behind the waterfall after the Dragonkin Soldier"],
+ ["Clarifying Horn Charm","Deep Siofra Well stairs"],
+ ["Mottled Necklace","Siofra River — ledge by the bridge near the Nokron waygate"],
+ ["Mottled Necklace +1","Nokron rooftop near the Spirit Jellyfish"],
+ ["Clarifying Horn Charm +1","Nokron, near Ancestral Woods"],
+ ["Immunizing Horn Charm","Ainsel River, giant ant nest"],
+ ["Moon of Nokstella","Nokstella, chest guarded by silver tears"],
+ ["Immunizing Horn Charm +1","Nokstella & Lake of Rot — Lake of Rot side chamber"],
+ ["Prince of Death's Cyst","Deeproot Depths — Runebear behind the waterfall"],
+ ["Boltdrake Talisman +1","Old Altus Tunnel chest"],
+ ["Arsenal Charm +1","Altus Tunnel corpse"],
+ ["Concealing Veil","Altus Plateau — Sage's Cave — Black Knife Assassin"],
+ ["Crimson Seed Talisman","Altus Plateau — Sainted Hero's Grave, imp-statue alcove"],
+ ["Dragoncrest Shield Talisman +1","Altus Plateau — Sainted Hero's Grave"],
+ ["Godfrey Icon","Altus Plateau — Godefroy drop, Golden Lineage Evergaol"],
+ ["Greatshield Talisman","Altus Plateau — cart east of Erdtree-Gazing Hill"],
+ ["Ritual Sword Talisman","Altus Plateau — Demi-Human Queen Gilika, Lux Ruins"],
+ ["Perfumer's Talisman","Altus Plateau — Perfumer's Ruins"],
+ ["Kindred of Rot's Exultation","Mt. Gelmir — Seethewater Cave — Kindred duo"],
+ ["Lightning Scorpion Charm","Mt. Gelmir — Wyndham Catacombs, imp-statue room"],
+ ["Pearldrake Talisman +1","Mt. Gelmir — Wyndham Ruins, imp statue"],
+ ["Fire Scorpion Charm","Mt. Gelmir — islet west of Fort Laiedd"],
+ ["Crimson Amber Medallion +1","Volcano Manor — Guest Hall, corpse by the imp statue"],
+ ["Dagger Talisman","Volcano Manor — imp-statue room with the Man-Serpents"],
+ ["Taker's Cameo","Volcano Manor — Juno Hoslow contract reward"],
+ ["Crepus's Vial","Volcano Manor — Rileigh contract reward"],
+ ["Daedicar's Woe","Volcano Manor — Rya's quest"],
+ ["Crucible Feather Talisman","Leyndell & Capital Outskirts — Auriza Hero's Grave"],
+ ["Blessed Dew Talisman","Leyndell & Capital Outskirts — west of the Divine Bridge grace"],
+ ["Ritual Shield Talisman","in front of the Leyndell colosseum door"],
+ ["Viridian Amber Medallion +1","Leyndell & Capital Outskirts — Margit rematch, Outer Wall Battleground"],
+ ["Erdtree's Favor +1","Subterranean Shunning-Grounds — Cathedral of the Forsaken (after Mohg, the Omen)"],
+ ["Haligdrake Talisman +1","Subterranean Shunning-Grounds — Leyndell Catacombs, behind an illusory wall"],
+ ["Crucible Scale Talisman","Subterranean Shunning-Grounds — Leyndell Catacombs, flame-trap room"],
+ ["Lord of Blood's Exultation","Subterranean Shunning-Grounds — Esgar, Priest of Blood drop"],
+ ["Godskin Swaddling Cloth","Mountaintops of the Giants — Spiritcaller's Cave — Godskin duo"],
+ ["Cerulean Amber Medallion +1","Mountaintops of the Giants — Castle Sol corpse"],
+ ["Flamedrake Talisman +1","Mountaintops of the Giants — corpse near the Grand Lift of Rold approach"],
+ ["Silver Scarab","Consecrated Snowfield — Hidden Path to the Haligtree, invisible bridge chest"],
+ ["Spelldrake Talisman +2","Consecrated Snowfield — Hidden Path to the Haligtree, near the Stray Mimic Tear"],
+ ["Stalwart Horn Charm +1","Consecrated Snowfield — corpse near Yelough Anix Tunnel"],
+ ["Graven-Mass Talisman","Consecrated Snowfield — Albinauric Rise puzzle"],
+ ["Primal Glintstone Blade","Consecrated Snowfield — Stargazer Ruins jellyfish puzzle"],
+ ["Haligdrake Talisman +2","Mohgwyn Palace corpse"],
+ ["Viridian Amber Medallion +2","Miquella's Haligtree — near Haligtree Town Plaza"],
+ ["Marika's Soreseal","Miquella's Haligtree — Elphael, imp-statue room"],
+ ["Dragoncrest Greatshield Talisman","Miquella's Haligtree — Drainage Channel, through the roof via roots"],
+ ["Pearldrake Talisman +2","Miquella's Haligtree — Haligtree Town corpse"],
+ ["Rotten Winged Sword Insignia","Miquella's Haligtree — Millicent's quest — side with her"],
+ ["Millicent's Prosthesis","Miquella's Haligtree — Millicent's quest — side against her"],
+ ["Dragoncrest Shield Talisman +2","Crumbling Farum Azula — floating rock near the Dragon Temple Lift"],
+ ["Boltdrake Talisman +2","Crumbling Farum Azula — Dragon Temple Rooftop, near the Crucible Knight"],
+ ["Old Lord's Talisman","Crumbling Farum Azula — chest across the bridge from Maliketh's arena"],
+ ["Shard of Alexander","Crumbling Farum Azula — Alexander's quest finale"],
+ ["Crimson Amber Medallion +2","Leyndell, Ashen Capital & Endgame — down the manhole south of the grace"],
+ ["Erdtree's Favor +2","Leyndell, Ashen Capital & Endgame — courtyard with three Lesser Ulcerated Tree Spirits"],
+ ["Furled Finger's Trick-Mirror","Roundtable Hold & Trades — Twin Maiden Husks"],
+ ["Host's Trick-Mirror","Roundtable Hold & Trades — Twin Maiden Husks"],
+ ["Ancestral Spirit's Horn","Roundtable Hold & Trades — Enia — Remembrance of the Regal Ancestor"],
+ ["Enraged Divine Beast","Roundtable Hold & Trades — Enia — Remembrance of the Dancing Lion (DLC)"],
+ ["Crimson Amber Medallion +3","Gravesite Plain — Fog Rift Catacombs — Death Knight"],
+ ["Blade of Mercy","Gravesite Plain — Scorched Ruins chest"],
+ ["Two-Headed Turtle Talisman","Gravesite Plain — waterfall cave east of Rivermouth Cave"],
+ ["Sharpshot Talisman","Gravesite Plain — Albinauric's Shack (verify)"],
+ ["Dried Bouquet","Belurat, Tower Settlement — secret storeroom"],
+ ["Immunizing Horn Charm +2","Belurat, Tower Settlement — Lesser Ulcerated Tree Spirit"],
+ ["Crusade Insignia","Belurat, Tower Settlement — Fire Knight Queelign invasion (his quest)"],
+ ["Rellana's Cameo","Castle Ensis — altar behind Moonrithyll"],
+ ["Spelldrake Talisman +3","Castle Ensis — storeroom under the front bridge"],
+ ["Flamedrake Talisman +3","Castle Ensis — chest above the cages (verify)"],
+ ["Outer God Heirloom","Cerulean Coast — Prospect Town chest"],
+ ["St. Trina's Smile","Cerulean Coast — Thiollier — St. Trina's quest"],
+ ["Clarifying Horn Charm +2","Charo's Hidden Grave — Lamenter's Gaol, corpse past the rat cave"],
+ ["Stalwart Horn Charm +2","Scadu Altus — Bonny Gaol, room after the Inner Jar"],
+ ["Smithing Talisman","Scadu Altus — Ruined Forge of Starfall Past, upper storeroom"],
+ ["Beloved Stardust","Scadu Altus — Count Ymir's quest"],
+ ["Shattered Stone Talisman","Scadu Altus — Moorth Ruins rooftop"],
+ ["Arrow's Soaring Sting Talisman","Scadu Altus — Fog Rift Fort tower chest"],
+ ["Blessed Blue Dew Talisman","Scadu Altus — Church of Benediction, Marika statue"],
+ ["Talisman of Lord's Bestowal","Shadow Keep — near the golden sealing tree"],
+ ["Lacerating Crossed-Tree","Shadow Keep — Leda's quest — side with Leda against the Hornsent"],
+ ["Retaliatory Crossed-Tree","Shadow Keep — Leda's quest — side with Ansbach"],
+ ["Boltdrake Talisman +3","Shadow Keep — Specimen Storehouse dining area"],
+ ["Pearldrake Talisman +3","Shadow Keep — Specimen Storehouse, on the great statue"],
+ ["Viridian Amber Medallion +3","Shadow Keep — Darklight Catacombs ledge"],
+ ["Crimson Seed Talisman +1","Scaduview & Hinterland — Finger Ruins of Rhia — ring the bell"],
+ ["Cerulean Seed Talisman +1","Scaduview & Hinterland — Finger Ruins of Dheo — ring the bell"],
+ ["Golden Braid","Scaduview & Hinterland — Shaman Village, inside the tree trunk"],
+ ["Aged One's Exultation","Abyssal Woods — Winter Lantern near the Abandoned Church"],
+ ["Ailment Talisman","Abyssal Woods — Abandoned Ailing Village, on the wooden bridge"],
+ ["Cerulean Amber Medallion +3","Ancient Ruins of Rauh — Scorpion River Catacombs — Death Knight"],
+ ["Mottled Necklace +2","Ancient Ruins of Rauh — top of the stairs past the spiritspring"],
+ ["Pearl Shield Talisman","Ancient Ruins of Rauh — soldier camp near Taylew's Ruined Forge"],
+ ["Verdigris Discus","Ancient Ruins of Rauh — statue in the ruins"],
+ ["Fine Crucible Feather Talisman","Ancient Ruins of Rauh — tree branch over the cliffs (verify)"],
+ ["Two-Handed Sword Talisman","Ancient Ruins of Rauh — Temple Town Ruins chest"],
+ ["Talisman of All Crucibles","Ancient Ruins of Rauh — Grand Stairway floating platform (verify)"],
+ ["Talisman of the Dread","Jagged Peak — Elder's Hovel (verify)"]
+];
+
+// Sorceries and incantations (213)
+const REF_SPELLS = [
+ ["Glintstone Pebble","Limgrave — Sellen — 1,000 runes"],
+ ["Glintstone Arc","Limgrave — Sellen — 1,500 runes"],
+ ["Glintstone Stars","Limgrave — Sellen — 3,000 runes"],
+ ["Crystal Barrage","Limgrave — Sellen — 1,500 runes"],
+ ["Scholar's Shield","Limgrave — Sellen — 2,500 runes"],
+ ["Scholar's Armament","Limgrave — Sellen — 3,000 runes"],
+ ["Shard Spiral","Limgrave — Sellen — after siding with her against Jerren"],
+ ["Ambush Shard","Weeping Peninsula — corpse beneath Witchbane Ruins"],
+ ["Crystal Burst","Weeping Peninsula — Demi-Human Queen at Demi-Human Forest Ruins"],
+ ["Rancorcall","Stormveil Castle — Teardrop Scarab near the Liftside Chamber"],
+ ["Carian Greatsword","Liurnia of the Lakes — Miriel at the Church of Vows — 10,000 runes"],
+ ["Magic Glintblade","Liurnia of the Lakes — Miriel at the Church of Vows — 3,000 runes"],
+ ["Swift Glintstone Shard","Liurnia of the Lakes — Miriel — Academy Scroll"],
+ ["Great Glintstone Shard","Liurnia of the Lakes — Miriel — Academy Scroll"],
+ ["Carian Slicer","Liurnia of the Lakes — Miriel — Royal House Scroll"],
+ ["Glintblade Phalanx","Liurnia of the Lakes — Miriel — Royal House Scroll"],
+ ["Star Shower","Liurnia of the Lakes — Miriel — Conspectus Scroll"],
+ ["Glintstone Cometshard","Liurnia of the Lakes — Miriel — Conspectus Scroll"],
+ ["Starlight","Liurnia of the Lakes — Thops at the Church of Irith"],
+ ["Cannon of Haima","Liurnia of the Lakes — top of the Converted Fringe Tower"],
+ ["Gavel of Haima","Liurnia of the Lakes — top of the Converted Fringe Tower"],
+ ["Carian Retaliation","Liurnia of the Lakes — Seluvis — 9,000 runes"],
+ ["Glintstone Icecrag","Liurnia of the Lakes — Seluvis — 7,500 runes"],
+ ["Freezing Mist","Liurnia of the Lakes — Seluvis — 12,000 runes"],
+ ["Carian Phalanx","Liurnia of the Lakes — Seluvis — 6,000 runes"],
+ ["Frozen Armament","Liurnia of the Lakes — Teardrop Scarab in the Three Sisters, behind Caria Manor"],
+ ["Carian Piercer","Liurnia of the Lakes — Teardrop Scarab northeast of the Main Caria Manor Gate"],
+ ["Greatblade Phalanx","Liurnia of the Lakes — Bols, Carian Knight — Cuckoo's Evergaol"],
+ ["Meteorite","Liurnia of the Lakes — Alabaster Lord — Royal Grave Evergaol"],
+ ["Ancient Death Rancor","Liurnia of the Lakes — Death Rite Bird south of Gate Town North"],
+ ["Briars of Sin","Liurnia of the Lakes — Thorn Sorcerer northwest of the Artist's Shack"],
+ ["Magic Downpour","Liurnia of the Lakes — Preceptor Miriam — Carian Study Hall"],
+ ["Lucidity","Liurnia of the Lakes — Preceptor Miriam — inverted Carian Study Hall"],
+ ["Loretta's Greatbow","Liurnia of the Lakes — Royal Knight Loretta drop"],
+ ["Shatter Earth","Liurnia of the Lakes — corpse in the tunnel"],
+ ["Crystal Release","Liurnia of the Lakes — Crystalian duo at the end"],
+ ["Comet","Academy of Raya Lucaria — hidden chest behind the illusory bookshelf outside the Debate Parlor"],
+ ["Shattering Crystal","Academy of Raya Lucaria — second floor of the Church of the Cuckoo"],
+ ["Gravity Well","Monolith Guardian in the academy"],
+ ["Terra Magica","rooftop at the end of the Academy Crystal Cave route"],
+ ["Thops's Barrier","Academy of Raya Lucaria — Thops's body near the Schoolhouse Classroom"],
+ ["Night Shard","Caelid — Gowry — 4,000 runes"],
+ ["Night Maiden's Mist","Caelid — Gowry — 5,000 runes"],
+ ["Night Comet","Caelid — chest behind the magic barrier in Sellia, Town of Sorcery"],
+ ["Eternal Darkness","Caelid — jail cell in the Swamp Lookout Tower"],
+ ["Rock Sling","Caelid — chest in the basement of Street of Sages Ruins"],
+ ["Rock Blaster","Caelid — chest in the topmost shack of the first mining area"],
+ ["Collapsing Stars","Caelid — chest"],
+ ["Stars of Ruin","Greyoll's Dragonbarrow — Master Lusat"],
+ ["Crystal Torrent","Greyoll's Dragonbarrow — Putrid Crystalian trio"],
+ ["Oracle Bubbles","Teardrop Scarab in the ruins northeast of Siofra River Well Depths"],
+ ["Great Oracular Bubble","Siofra River — Teardrop Scarab south of Worshippers' Woods"],
+ ["Unseen Blade","Altus Plateau — Mirage Rise puzzle"],
+ ["Unseen Form","Altus Plateau — Mirage Rise puzzle, west of Bower of Bounty"],
+ ["Roiling Magma","Mt. Gelmir — Hermit's Shack"],
+ ["Comet Azur","Mt. Gelmir — Primeval Sorcerer Azur"],
+ ["Tibia's Summons","Mt. Gelmir — Tibia Mariner at Wyndham Ruins"],
+ ["Magma Shot","Volcano Manor — reward for the first assassination contract"],
+ ["Gelmir's Fury","Volcano Manor — reward from Recusant Bernahl's contract"],
+ ["Founding Rain of Stars","Mountaintops of the Giants — Heretical Rise chest"],
+ ["Zamor Ice Storm","Mountaintops of the Giants — corpse inside the Zamor Ruins"],
+ ["Briars of Punishment","Mountaintops of the Giants — corpse northeast of the Zamor Ruins"],
+ ["Ranni's Dark Moon","Moonlight Altar — Chelona's Rise chest, after the three wise beasts puzzle"],
+ ["Adula's Moonblade","Moonlight Altar — Glintstone Dragon Adula"],
+ ["Meteorite of Astel","Consecrated Snowfield — Astel, Stars of Darkness drop"],
+ ["Explosive Ghostflame","Consecrated Snowfield — Death Rite Bird near the Apostate Derelict"],
+ ["Fia's Mist","Deeproot Depths — Fia's Champions at the Prince of Death's Throne"],
+ ["Loretta's Mastery","Miquella's Haligtree — Loretta, Knight of the Haligtree drop"],
+ ["Rennala's Full Moon","Roundtable Hold & Trades — Enia — Remembrance of the Full Moon Queen"],
+ ["Rykard's Rancor","Roundtable Hold & Trades — Enia — Remembrance of the Blasphemous"],
+ ["Rellana's Twin Moons","Roundtable Hold & Trades — Enia — Remembrance of Twin Moon Knight (DLC)"],
+ ["Vortex of Putrescence","Roundtable Hold & Trades — Enia — Remembrance of Putrescence (DLC)"],
+ ["Blades of Stone","Roundtable Hold & Trades — Enia — Remembrance of the Wild Boar Rider (DLC)"],
+ ["Glintblade Trio","Castle Ensis — rooftop corpse"],
+ ["Miriam's Vanishing","Scadu Altus — Count Ymir"],
+ ["Glintstone Nail","Scadu Altus — Count Ymir — after the first bell"],
+ ["Glintstone Nails","Scadu Altus — Count Ymir — after the first bell"],
+ ["Fleeting Microcosm","Scadu Altus — Count Ymir — after the second bell"],
+ ["Cherishing Fingers","Scadu Altus — graveyard west of the cathedral"],
+ ["Gravitational Missile","Scaduview & Hinterland — Fallingstar Beast at Fingerstone Hill"],
+ ["Mantle of Thorns","Shadow Keep — Lesser Ulcerated Tree Spirit"],
+ ["Impenetrable Thorns","Shadow Keep — interior, after rotating the statues"],
+ ["Rings of Spectral Light","Charo's Hidden Grave — altar by the giant bird statue"],
+ ["Mass of Putrescence","Cerulean Coast — corpse"],
+ ["Heal","Roundtable Hold & Trades — Brother Corhyn — 1,500 runes"],
+ ["Urgent Heal","Roundtable Hold & Trades — Brother Corhyn — 1,000 runes"],
+ ["Catch Flame","Roundtable Hold & Trades — Brother Corhyn — 600 runes"],
+ ["Cure Poison","Roundtable Hold & Trades — Brother Corhyn"],
+ ["Rejection","Roundtable Hold & Trades — Brother Corhyn — 1,500 runes"],
+ ["Magic Fortification","Roundtable Hold & Trades — Brother Corhyn — 3,500 runes"],
+ ["Flame Fortification","Roundtable Hold & Trades — Brother Corhyn — 3,000 runes"],
+ ["Flame Sling","Roundtable Hold & Trades — Brother Corhyn — 800 runes"],
+ ["Lightning Fortification","Roundtable Hold & Trades — Brother Corhyn — 7,500 runes"],
+ ["Great Heal","Roundtable Hold & Trades — Brother Corhyn — 9,000 runes"],
+ ["Discus of Light","Roundtable Hold & Trades — Brother Corhyn — 11,000 runes"],
+ ["Immutable Shield","Roundtable Hold & Trades — Brother Corhyn — 13,000 runes"],
+ ["Litany of Proper Death","Roundtable Hold & Trades — D, Hunter of the Dead — 2,500 runes"],
+ ["Order's Blade","Roundtable Hold & Trades — D, Hunter of the Dead — 3,000 runes"],
+ ["Black Flame's Protection","Roundtable Hold & Trades — Gideon Ofnir — after Miquella's Haligtree"],
+ ["Lord's Divine Fortification","Roundtable Hold & Trades — Gideon Ofnir — after defeating Malenia"],
+ ["Law of Causality","Roundtable Hold & Trades — Gideon Ofnir — after defeating Mohg, Lord of Blood"],
+ ["Burn, O Flame!","Roundtable Hold & Trades — Enia — Remembrance of the Fire Giant"],
+ ["Bloodboon","Roundtable Hold & Trades — Enia — Remembrance of the Blood Lord"],
+ ["Scarlet Aeonia","Roundtable Hold & Trades — Enia — Remembrance of the Rot Goddess"],
+ ["Placidusax's Ruin","Roundtable Hold & Trades — Enia — Remembrance of the Dragonlord"],
+ ["Messmer's Orb","Roundtable Hold & Trades — Enia — Remembrance of the Impaler (DLC)"],
+ ["Midra's Flame of Frenzy","Roundtable Hold & Trades — Enia — Remembrance of the Lord of Frenzied Flame (DLC)"],
+ ["Light of Miquella","Roundtable Hold & Trades — Enia — Remembrance of a God and a Lord (DLC)"],
+ ["Land of Shadow","Roundtable Hold & Trades — Enia — Remembrance of the Shadow Sunflower (DLC)"],
+ ["Rotten Butterflies","Roundtable Hold & Trades — Enia — Remembrance of the Saint of the Bud (DLC)"],
+ ["Agheel's Flame","Limgrave — Flying Dragon Agheel"],
+ ["Dragonfire","Limgrave — Church of Dragon Communion — Dragon Heart trade"],
+ ["Dragonclaw","Limgrave — Church of Dragon Communion — Dragon Heart trade"],
+ ["Dragonmaw","Limgrave — Church of Dragon Communion — Dragon Heart trade"],
+ ["Aspects of the Crucible: Tail","Limgrave — Crucible Knight — Stormhill Evergaol"],
+ ["The Flame of Frenzy","Weeping Peninsula — glowing light at Callu Baptismal Church"],
+ ["Poison Mist","Weeping Peninsula — Teardrop Scarab southeast of Castle Morne Rampart"],
+ ["Divine Fortification","Weeping Peninsula — Teardrop Scarab west of Tombsward Ruins"],
+ ["Lightning Strike","Weeping Peninsula — Teardrop Scarab east of the Tombsward grace"],
+ ["Aspects of the Crucible: Horns","Stormveil Castle — Crucible Knight at the Rampart Tower"],
+ ["Lord's Heal","Liurnia of the Lakes — Miriel — Two Fingers' Prayerbook"],
+ ["Lord's Aid","Liurnia of the Lakes — Miriel — Two Fingers' Prayerbook"],
+ ["Assassin's Approach","Liurnia of the Lakes — Miriel — Assassin's Prayerbook"],
+ ["Darkness","Liurnia of the Lakes — Miriel — Assassin's Prayerbook"],
+ ["O, Flame!","Liurnia of the Lakes — Miriel — Fire Monks' Prayerbook"],
+ ["Surge, O Flame!","Liurnia of the Lakes — Miriel — Fire Monks' Prayerbook"],
+ ["Black Flame","Liurnia of the Lakes — Miriel — Godskin Prayerbook"],
+ ["Black Flame Blade","Liurnia of the Lakes — Miriel — Godskin Prayerbook"],
+ ["Lightning Spear","Liurnia of the Lakes — Miriel — Dragon Cult Prayerbook"],
+ ["Honed Bolt","Liurnia of the Lakes — Miriel — Dragon Cult Prayerbook"],
+ ["Electrify Armament","Liurnia of the Lakes — Miriel — Dragon Cult Prayerbook"],
+ ["Blessing's Boon","Liurnia of the Lakes — Miriel — 4,000 runes"],
+ ["Flame, Fall Upon Them","Liurnia of the Lakes — Miriel — Giant's Prayerbook"],
+ ["Giantsflame Take Thee","Liurnia of the Lakes — Miriel — Giant's Prayerbook"],
+ ["Radagon's Rings of Light","Liurnia of the Lakes — Miriel — Golden Order Principia"],
+ ["Law of Regression","Liurnia of the Lakes — Miriel — Golden Order Principia"],
+ ["Ancient Dragons' Lightning Spear","Liurnia of the Lakes — Miriel — Ancient Dragon Prayerbook"],
+ ["Ancient Dragons' Lightning Strike","Liurnia of the Lakes — Miriel — Ancient Dragon Prayerbook"],
+ ["Flame of the Fell God","Liurnia of the Lakes — Adan, Thief of Fire — Malefactor's Evergaol"],
+ ["Bloodflame Blade","Liurnia of the Lakes — Teardrop Scarab north of Rose Church"],
+ ["Frenzied Burst","Liurnia of the Lakes — Teardrop Scarab north of the Frenzied Flame Village"],
+ ["Howl of Shabriri","Liurnia of the Lakes — chest in the Frenzied Flame Village tower"],
+ ["Flame, Cleanse Me","Liurnia of the Lakes — Fire Monk camp southwest of the Eastern Tableland"],
+ ["Dragonice","Caelid — Cathedral of Dragon Communion — Dragon Heart trade"],
+ ["Glintstone Breath","Caelid — Cathedral of Dragon Communion — Dragon Heart trade"],
+ ["Rotten Breath","Caelid — Cathedral of Dragon Communion — Dragon Heart trade"],
+ ["Smarag's Glintstone Breath","Caelid — Cathedral of Dragon Communion — Dragon Heart trade"],
+ ["Ekzykes's Decay","Caelid — Cathedral of Dragon Communion — Dragon Heart trade"],
+ ["Greyoll's Roar","Caelid — Cathedral of Dragon Communion — Dragon Heart trade"],
+ ["Pest Threads","Caelid — Gowry — 7,500 runes"],
+ ["Flame, Grant Me Strength","Caelid — corpse behind Fort Gael"],
+ ["Whirl, O Flame!","Caelid — Teardrop Scarab northeast of the Shack of the Rotting"],
+ ["Poison Armament","Caelid — Teardrop Scarab south of Sellia Crystal Tunnel"],
+ ["Bestial Sling","Greyoll's Dragonbarrow — Gurranq — 2 Deathroot"],
+ ["Bestial Vitality","Greyoll's Dragonbarrow — Gurranq — 3 Deathroot"],
+ ["Beast Claw","Greyoll's Dragonbarrow — Gurranq — 5 Deathroot"],
+ ["Stone of Gurranq","Greyoll's Dragonbarrow — Gurranq — 6 Deathroot"],
+ ["Gurranq's Beast Claw","Greyoll's Dragonbarrow — Gurranq — 8 Deathroot"],
+ ["Bestial Constitution","Greyoll's Dragonbarrow — Teardrop Scarab under the western Farum Greatbridge"],
+ ["Order Healing","Nokron & Siofra Aqueduct — Teardrop Scarab in the aqueduct"],
+ ["Frozen Lightning Spear","Ainsel River — Dragonkin Soldier of Nokstella drop"],
+ ["Fortissax's Lightning Spear","Deeproot Depths — Lichdragon Fortissax drop"],
+ ["Death Lightning","Deeproot Depths — Lichdragon Fortissax — Fia's questline"],
+ ["Elden Stars","Deeproot Depths — corpse in the ant-guarded cave"],
+ ["Lansseax's Glaive","Altus Plateau — Ancient Dragon Lansseax"],
+ ["Protection of the Erdtree","Altus Plateau — Teardrop Scarab southeast of Road of Iniquity Side Path"],
+ ["Dragonbolt Blessing","Altus Plateau — chest in Stormcaller Church"],
+ ["Scouring Black Flame","Altus Plateau — Godskin Apostle at Dominula, Windmill Village"],
+ ["Wrath of Gold","Altus Plateau — chest beneath the Woodfolk Ruins (verify)"],
+ ["Golden Vow","Mt. Gelmir — corpse in the Corpse-Stench Shack"],
+ ["Magma Breath","Magma Wyrm in Mt. Gelmir"],
+ ["Noble Presence","Volcano Manor — Godskin Noble drop"],
+ ["Aspects of the Crucible: Breath","Volcano Manor — Tanith's Knight, after killing Tanith"],
+ ["Barrier of Gold","Leyndell & Capital Outskirts — invisible Teardrop Scarab"],
+ ["Fire's Deadly Sin","Leyndell & Capital Outskirts — Flightless Bird Painting reward, Fortified Manor"],
+ ["Inescapable Frenzy","Subterranean Shunning-Grounds — corpse near the Cathedral of the Forsaken"],
+ ["Shadow Bait","Subterranean Shunning-Grounds — corpse in the shunning-grounds"],
+ ["Bloodflame Talons","Subterranean Shunning-Grounds — Mohg, the Omen drop"],
+ ["Borealis's Mist","Mountaintops of the Giants — Borealis, the Freezing Fog"],
+ ["Vyke's Dragonbolt","Mountaintops of the Giants — Roundtable Knight Vyke — Lord Contender's Evergaol"],
+ ["Flame, Protect Me","Mountaintops of the Giants — corpse behind the fogged barrier"],
+ ["Black Flame Ritual","Mountaintops of the Giants — Spirit-Caller Snail drop"],
+ ["Theodorix's Magma","Consecrated Snowfield — Great Wyrm Theodorix"],
+ ["Unendurable Frenzy","Consecrated Snowfield — chest in the Yelough Anix Ruins"],
+ ["Swarm of Flies","Mohgwyn Palace — corpse near the Dynasty Mausoleum Entrance"],
+ ["Triple Rings of Light","Miquella's Haligtree — behind the fogged door near the Prayer Room"],
+ ["Black Blade","Crumbling Farum Azula — Maliketh, the Black Blade drop"],
+ ["Golden Lightning Fortification","Crumbling Farum Azula — Teardrop Scarab near the Dragon Temple Lift"],
+ ["Blessing of the Erdtree","Leyndell, Ashen Capital & Endgame — Queen's Bedchamber chest"],
+ ["Erdtree Heal","Leyndell, Ashen Capital & Endgame — Queen's Bedchamber chest"],
+ ["Ghostflame Breath","Gravesite Plain — Grand Altar of Dragon Communion — 3 Dragon Hearts"],
+ ["Bayle's Flame Lightning","Gravesite Plain — Grand Altar of Dragon Communion — Heart of Bayle"],
+ ["Bayle's Tyranny","Gravesite Plain — Grand Altar of Dragon Communion — Heart of Bayle"],
+ ["Dragonbolt of Florissax","Gravesite Plain — Dragon Priestess reward"],
+ ["Electrocharge","Gravesite Plain — corpse"],
+ ["Spira","Belurat, Tower Settlement — altar in the settlement"],
+ ["Divine Beast Tornado","Belurat, Tower Settlement — Divine Beast Dancing Lion drop"],
+ ["Watchful Spirit","Belurat, Tower Settlement — Hornsent Grandam, after the Dancing Lion"],
+ ["Multilayered Ring of Light","Cerulean Coast — Misbegotten Crusader spirit"],
+ ["Aspects of the Crucible: Bloom","Scadu Altus — corpse by the giant Miranda Sprout"],
+ ["Golden Arcs","Scadu Altus — chest southeast of Moorth Ruins"],
+ ["Giant Golden Arc","Scadu Altus — Ruins of Unte chest — needs a Hefty Furnace Pot"],
+ ["Heal from Afar","Scadu Altus — corpse on the underground golden-tree path"],
+ ["Furious Blade of Ansbach","Scadu Altus — completing Sir Ansbach's questline"],
+ ["Aspects of the Crucible: Thorns","Shadow Keep — Golden Hippopotamus drop"],
+ ["Wrath from Afar","Shadow Keep — upper-level column"],
+ ["Fire Serpent","Shadow Keep — storehouse balcony"],
+ ["Rain of Fire","Shadow Keep — Fire Knight at the West Rampart"],
+ ["Minor Erdtree","Scaduview & Hinterland — Shaman Village flower field"],
+ ["Divine Bird Feathers","Ancient Ruins of Rauh — corpse by the lake in the Rauh ruins"],
+ ["Pest-Thread Spears","Ancient Ruins of Rauh — corpse behind the main stairs, Church of the Bud"],
+ ["Roar of Rugalea","Ancient Ruins of Rauh — great bear northwest of Ravine North"],
+ ["Knight's Lightning Spear","Ancient Ruins of Rauh — ledge area corpse"]
+];
+
+// Spirit ashes (84)
+const REF_SPIRITS = [
+ ["Lone Wolf Ashes","Limgrave — Renna at the Church of Elleh, after getting Torrent"],
+ ["Spirit Jellyfish Ashes","Limgrave — Roderika at Stormhill Shack"],
+ ["Godrick Soldier Ashes","Limgrave — corpse in the jellyfish graveyard southwest of Stormhill Shack"],
+ ["Skeletal Militiaman Ashes","Limgrave — Tibia Mariner at Summonwater Village"],
+ ["Stormhawk Deenh","Limgrave — Chapel of Anticipation, second-floor wooden platforms"],
+ ["Wandering Noble Ashes","Limgrave — corpse propped against a coffin (verify)"],
+ ["Banished Knight Oleg","Limgrave — Ulcerated Tree Spirit drop"],
+ ["Banished Knight Engvall","Limgrave — Grave Warden Duelist drop"],
+ ["Noble Sorcerer Ashes","Limgrave — Erdtree Burial Watchdog drop (verify)"],
+ ["Lhutel the Headless","Weeping Peninsula — Cemetery Shade drop"],
+ ["Demi-Human Ashes","Weeping Peninsula — Erdtree Burial Watchdog drop"],
+ ["Warhawk Ashes","Stormveil Castle — reward for the Prophecy Painting puzzle"],
+ ["Albinauric Ashes","Liurnia of the Lakes — corpse in the graveyard east of Caria Manor"],
+ ["Land Squirt Ashes","grave south of the Eastern Liurnia Lake Shore grace"],
+ ["Latenna the Albinauric","Liurnia of the Lakes — Slumbering Wolf's Shack — show the Right Medallion"],
+ ["Finger Maiden Therolina Puppet","Liurnia of the Lakes — Seluvis, after finding his secret dungeon"],
+ ["Jarwight Puppet","Liurnia of the Lakes — Seluvis, after finding his secret dungeon"],
+ ["Dolores the Sleeping Arrow Puppet","Liurnia of the Lakes — Pidia — if Nepheli did not drink Seluvis's Potion"],
+ ["Nepheli Loux Puppet","Liurnia of the Lakes — Pidia's body — if Nepheli drank Seluvis's Potion"],
+ ["Dung Eater Puppet","Liurnia of the Lakes — Seluvis — if the Dung Eater drank Seluvis's Potion"],
+ ["Glintstone Sorcerer Ashes","Liurnia of the Lakes — Spirit-Caller Snail drop"],
+ ["Raya Lucaria Soldier Ashes","Liurnia of the Lakes — chest behind an illusory wall"],
+ ["Kaiden Sellsword Ashes","Liurnia of the Lakes — Erdtree Burial Watchdog drop"],
+ ["Page Ashes","Liurnia of the Lakes — by the tomb in the final area"],
+ ["Twinsage Sorcerer Ashes","Liurnia of the Lakes — Cemetery Shade drop (verify)"],
+ ["Marionette Soldier Ashes","Academy of Raya Lucaria — corpse in the graveyard area"],
+ ["Fanged Imp Ashes","Academy of Raya Lucaria — Isolated Merchant (verify)"],
+ ["Kindred of Rot Ashes","Caelid — Cemetery Shade drop"],
+ ["Miranda Sprout Ashes","Caelid — behind an illusory wall past the first grace"],
+ ["Mad Pumpkin Head Ashes","Caelid — Erdtree Burial Watchdog duo drop"],
+ ["Redmane Knight Ogha","Caelid — Putrid Tree Spirit drop"],
+ ["Radahn Soldier Ashes","Caelid — rot-filled room guarded by a Cleanrot Knight spirit"],
+ ["Putrid Corpse Ashes","Caelid — Frenzied Duelist drop"],
+ ["Rotten Stray Ashes","Caelid — corpse south of the Sellia Under-Stair grace"],
+ ["Battlemage Hugues","Caelid — Sellia Evergaol"],
+ ["Crystalian Ashes","Greyoll's Dragonbarrow — chest guarded by three Glintstone Sorcerers"],
+ ["Ancestral Follower Ashes","Siofra River — Ancestor Spirit drop"],
+ ["Mimic Tear Ashes","Nokron & Siofra Aqueduct — chest behind the fog wall, Night's Sacred Ground"],
+ ["Nightmaiden & Swordstress Puppets","Nokron & Siofra Aqueduct — imp-statue door needing 2 Stonesword Keys"],
+ ["Greatshield Soldier Ashes","Nokron & Siofra Aqueduct — corpse in the graveyard, guarded by a Fallen Hawks Soldier"],
+ ["Clayman Ashes","body at the waterfall edge, Ainsel River Main"],
+ ["Archer Ashes","Nokstella & Lake of Rot — corpse on a balcony"],
+ ["Mausoleum Soldier Ashes","Deeproot Depths — before the dead tree at the northernmost point"],
+ ["Ancient Dragon Knight Kristoff","Altus Plateau — Ancient Hero of Zamor drop"],
+ ["Leyndell Soldier Ashes","Altus Plateau — corpse in the collapsing-floor room"],
+ ["Depraved Perfumer Carmaan","Altus Plateau — locked room (verify)"],
+ ["Giant Rat Ashes","Altus Plateau — stable at West Windmill Pasture"],
+ ["Avionette Soldier Ashes","Altus Plateau — corpse near a tombstone (verify)"],
+ ["Bloodhound Knight Floh","Mt. Gelmir — Red Wolf of the Champion drop"],
+ ["Fire Monk Ashes","Mt. Gelmir — room with frost-breath statue traps, via the hidden elevator (verify)"],
+ ["Perfumer Tricia Ashes","Mt. Gelmir — Perfumer Tricia & Misbegotten Warrior drop"],
+ ["Winged Misbegotten Ashes","Mt. Gelmir — pit guarded by Misbegotten"],
+ ["Skeletal Bandit Ashes","Mt. Gelmir — Tibia Mariner at Wyndham Ruins"],
+ ["Man-Serpent Ashes","Volcano Manor — atop a stone table (verify)"],
+ ["Vulgar Militia Ashes","Leyndell & Capital Outskirts — hidden northern area"],
+ ["Soldjars of Fortune Ashes","Leyndell & Capital Outskirts — Grave Warden Duelist drop"],
+ ["Omenkiller Rollo","Leyndell & Capital Outskirts — Fell Twins, bridge to the Divine Tower of East Altus"],
+ ["Nomad Ashes","Subterranean Shunning-Grounds — corpse past the basilisks"],
+ ["Black Knife Tiche","Moonlight Altar — Alecto, Black Knife Ringleader — Ringleader's Evergaol"],
+ ["Blackflame Monk Amon","Consecrated Snowfield — Stray Mimic Tear drop"],
+ ["Cleanrot Knight Finlay","Miquella's Haligtree — chest beside the gazebo in Elphael"],
+ ["Haligtree Soldier Ashes","Miquella's Haligtree — by the chalice statue overlook"],
+ ["Oracle Envoy Ashes","Miquella's Haligtree — body near the Haligtree Town grace"],
+ ["Azula Beastman Ashes","Crumbling Farum Azula — sarcophagus on the lowest Dragon Temple floor"],
+ ["Demi-Human Swordsman Yosh","Gravesite Plain — Demi-Human Swordmaster Onze drop"],
+ ["Black Knight Commander Andreas","Gravesite Plain — coffin"],
+ ["Bloodfiend Hexer's Ashes","Gravesite Plain — Chief Bloodfiend drop"],
+ ["Ancient Dragon Florissax","Gravesite Plain — give Thiollier's Concoction to the Dragon Priestess"],
+ ["Man-Fly Ashes","Gravesite Plain — corpse at the Village of Flies"],
+ ["Gravebird Ashes","Charo's Hidden Grave — corpse on the mountain, western cape"],
+ ["Swordhand of Night Jolán","Charo's Hidden Grave — give Jolán an Iris of Grace"],
+ ["Jolán and Anna","Charo's Hidden Grave — reunite Jolán's ashes with Anna"],
+ ["Curseblade Meera","Scadu Altus — Curseblade Labirith drop"],
+ ["Messmer Soldier Ashes","Scadu Altus — tombstone"],
+ ["Fire Knight Queelign","Scadu Altus — give Queelign an Iris of Grace"],
+ ["Fingercreeper Ashes","Scadu Altus — corpse guarded by a Fingercreeper (verify)"],
+ ["Bigmouth Imp Ashes","Shadow Keep — chest"],
+ ["Fire Knight Hilde","Shadow Keep — loft area with the two elevators"],
+ ["Black Knight Captain Huw","Ancient Ruins of Rauh — coffin"],
+ ["Taylew the Golem Smith","Ancient Ruins of Rauh — clear the dungeon"],
+ ["Spider Scorpion Ashes","Ancient Ruins of Rauh — corpse guarded by a Spider Scorpion"],
+ ["Divine Bird Warrior Ornis","Ancient Ruins of Rauh — chest in the Rauh ruins"],
+ ["Inquisitor Ashes","Enir-Ilim — corpse"],
+ ["Horned Warrior Ashes","Enir-Ilim — corpse"]
+];
+
+
+// Weapons, ashes of war and crystal tears, sourced separately from the v7
+// data. An empty list reads as "not checked" rather than "nothing matched".
+// Weapon names, including shields, staves, seals and bows (479)
+const REF_WEAPONS = (
+  "Dagger|Black Knife|Parrying Dagger|Miséricorde|Reduvia|Crystal Knife|Celebrant's Sickle|Glintstone K" +
+  "ris|Scorpion's Stinger|Great Knife|Wakizashi|Cinquedea|Ivory Sickle|Bloodstained Dagger|Erdsteel Dag" +
+  "ger|Blade of Calling|Main-gauche|Fire Knight's Shortsword|Longsword|Short Sword|Broadsword|Lordsworn" +
+  "'s Straight Sword|Weathered Straight Sword|Ornamental Straight Sword|Golden Epitaph|Coded Sword|Swor" +
+  "d of Night and Flame|Crystal Sword|Carian Knight's Sword|Sword of St. Trina|Miquellan Knight's Sword" +
+  "|Cane Sword|Regalia of Eochaid|Noble's Slender Sword|Warhawk's Talon|Lazuli Glintstone Sword|Rotten " +
+  "Crystal Sword|Velvet Sword of St. Trina|Stone-Sheathed Sword|Sword of Light|Sword of Darkness|Insepa" +
+  "rable Sword|Bastard Sword|Forked Greatsword|Iron Greatsword|Lordsworn's Greatsword|Knight's Greatswo" +
+  "rd|Flamberge|Ordovis's Greatsword|Alabaster Lord's Sword|Banished Knight's Greatsword|Dark Moon Grea" +
+  "tsword|Sacred Relic Sword|Helphen's Steeple|Blasphemous Blade|Marais Executioner's Sword|Sword of Mi" +
+  "los|Golden Order Greatsword|Claymore|Gargoyle's Greatsword|Death's Poker|Gargoyle's Blackblade|Great" +
+  "sword of Damnation|Lizard Greatsword|Greatsword of Solitude|Greatsword|Watchdog's Greatsword|Maliket" +
+  "h's Black Blade|Troll's Golden Sword|Zweihander|Starscourge Greatsword|Royal Greatsword|Godslayer's " +
+  "Greatsword|Ruins Greatsword|Grafted Blade Greatsword|Troll Knight's Sword|Ancient Meteoric Ore Great" +
+  "sword|Fire Knight's Greatsword|Greatsword of Radahn (Lord)|Moonrithyll's Knight Sword|Greatsword of " +
+  "Radahn (Light)|Nox Flowing Sword|Falchion|Beastman's Curved Sword|Shotel|Shamshir|Bandit's Curved Sw" +
+  "ord|Magma Blade|Flowing Curved Sword|Wing of Astel|Scavenger's Curved Sword|Eclipse Shotel|Serpent-G" +
+  "od's Curved Sword|Mantis Blade|Scimitar|Grossmesser|Spirit Sword|Falx|Dancing Blade of Ranah|Horned " +
+  "Warrior's Sword|Onyx Lord's Greatsword|Dismounter|Bloodhound's Fang|Magma Wyrm's Scalesword|Zamor Cu" +
+  "rved Sword|Omen Cleaver|Monk's Flameblade|Beastman's Cleaver|Morgott's Cursed Sword|Freyja's Greatsw" +
+  "ord|Horned Warrior's Greatsword|Star-Lined Sword|Uchigatana|Nagakiba|Hand of Malenia|Meteoric Ore Bl" +
+  "ade|Rivers of Blood|Moonveil|Dragonscale Blade|Serpentbone Blade|Sword of Night|Twinblade|Godskin Pe" +
+  "eler|Twinned Knight Swords|Eleonora's Poleblade|Gargoyle's Twinblade|Gargoyle's Black Blades|Euporia" +
+  "|Black Steel Twinblade|Carian Sorcery Sword|Estoc|Cleanrot Knight's Sword|Rapier|Rogier's Rapier|Ant" +
+  "spur Rapier|Frozen Needle|Noble's Estoc|Sword Lance|Bloody Helice|Godskin Stitcher|Great Épée|Dragon" +
+  " King's Cragblade|Queelign's Greatsword|Battle Axe|Forked Hatchet|Hand Axe|Jawbone Axe|Iron Cleaver|" +
+  "Ripple Blade|Celebrant's Cleaver|Icerind Hatchet|Highland Axe|Sacrificial Axe|Rosus' Axe|Stormhawk A" +
+  "xe|Smithscript Axe|Death Knight's Twin Axes|Messmer Soldier's Axe|Forked-Tongue Hatchet|Warped Axe|P" +
+  "utrescence Cleaver|Greataxe|Great Omenkiller Cleaver|Crescent Moon Axe|Axe of Godrick|Longhaft Axe|R" +
+  "usted Anchor|Executioner's Greataxe|Winged Greathorn|Butchering Knife|Gargoyle's Great Axe|Gargoyle'" +
+  "s Black Axe|Death Knight's Longhaft Axe|Bonny Butchering Knife|Mace|Club|Curved Club|Warpick|Morning" +
+  " Star|Varré's Bouquet|Spiked Club|Hammer|Monk's Flamemace|Envoy's Horn|Scepter of the All-Knowing|No" +
+  "x Flowing Hammer|Ringed Finger|Stone Club|Marika's Hammer|Flowerstone Gavel|Large Club|Greathorn Ham" +
+  "mer|Battle Hammer|Great Mace|Curved Great Club|Celebrant's Skull|Pickaxe|Beastclaw Greathammer|Envoy" +
+  "'s Long Horn|Cranial Vessel Candlestand|Great Stars|Brick Hammer|Devourer's Scepter|Rotten Battle Ha" +
+  "mmer|Smithscript Greathammer|Black Steel Greathammer|Nightrider Flail|Flail|Family Heads|Bastard's S" +
+  "tars|Chainlink Flail|Serpent Flail|Short Spear|Spear|Crystal Spear|Clayman's Harpoon|Cleanrot Spear|" +
+  "Partisan|Celebrant's Rib-Rake|Pike|Torchpole|Bolt of Gransax|Cross-Naginata|Death Ritual Spear|Inqui" +
+  "sitor's Girandole|Spiked Spear|Iron Spear|Rotten Crystal Spear|Smithscript Spear|Swift Spear|Bloodfi" +
+  "end's Fork|Bloodfiend's Sacred Spear|Mohgwyn's Sacred Spear|Siluria's Tree|Serpent-Hunter|Vyke's War" +
+  " Spear|Lance|Treespear|Spear of the Impaler|Messmer Soldier's Spear|Barbed Staff-Spear|Halberd|Pest'" +
+  "s Glaive|Lucerne|Banished Knight's Halberd|Commander's Standard|Nightrider Glaive|Ripple Crescent Ha" +
+  "lberd|Vulgar Militia Saw|Golden Halberd|Glaive|Loretta's War Sickle|Guardian's Swordspear|Vulgar Mil" +
+  "itia Shotel|Dragon Halberd|Gargoyle's Halberd|Gargoyle's Black Halberd|Spirit Glaive|Poleblade of th" +
+  "e Bud|Scythe|Grave Scythe|Halo Scythe|Winged Scythe|Obsidian Lamina|Caestus|Spiked Caestus|Grafted D" +
+  "ragon|Iron Ball|Star Fist|Katar|Clinging Bone|Veteran's Prosthesis|Cipher Pata|Thiollier's Hidden Ne" +
+  "edle|Pata|Poisoned Hand|Madding Hand|Golem Fist|Hookclaws|Venomous Fang|Bloodhound Claws|Raptor Talo" +
+  "ns|Claws of Night|Whip|Thorned Whip|Magma Whip Candlestick|Hoslow's Petal Whip|Giant's Red Braid|Uru" +
+  "mi|Tooth Whip|Anvil Hammer|Bloodfiend's Arm|Prelate's Inferno Crozier|Watchdog's Staff|Great Club|En" +
+  "voy's Greathorn|Duelist Greataxe|Axe of Godfrey|Dragon Greatclaw|Staff of the Avatar|Fallingstar Bea" +
+  "st Jaw|Ghiza's Wheel|Giant-Crusher|Golem's Halberd|Troll's Hammer|Rotten Staff|Rotten Greataxe|Devon" +
+  "ia's Hammer|Shadow Sunflower Blossom|Gazing Finger|Shortbow|Misbegotten Shortbow|Red Branch Shortbow" +
+  "|Harp Bow|Composite Bow|Bone Bow|Longbow|Albinauric Bow|Horn Bow|Erdtree Bow|Serpent Bow|Pulley Bow|" +
+  "Black Bow|Ansbach's Longbow|Lion Greatbow|Golem Greatbow|Erdtree Greatbow|Greatbow|Igon's Greatbow|S" +
+  "oldier's Crossbow|Light Crossbow|Heavy Crossbow|Pulley Crossbow|Full Moon Crossbow|Arbalest|Crepus's" +
+  " Black-Key Crossbow|Repeating Crossbow|Spread Crossbow|Hand Ballista|Jar Cannon|Rabbath's Cannon|Gli" +
+  "ntstone Staff|Crystal Staff|Gelmir Glintstone Staff|Demi-Human Queen's Staff|Carian Regal Scepter|Di" +
+  "gger's Staff|Astrologer's Staff|Carian Glintblade Staff|Prince of Death's Staff|Albinauric Staff|Aca" +
+  "demy Glintstone Staff|Carian Glintstone Staff|Azur's Glintstone Staff|Lusat's Glintstone Staff|Meteo" +
+  "rite Staff|Staff of the Guilty|Rotten Crystal Staff|Staff of Loss|Staff of the Great Beyond|Maternal" +
+  " Staff|Finger Seal|Godslayer's Seal|Giant's Seal|Gravel Stone Seal|Clawmark Seal|Golden Order Seal|E" +
+  "rdtree Seal|Dragon Communion Seal|Frenzied Flame Seal|Dryleaf Seal|Fire Knight's Seal|Spiraltree Sea" +
+  "l|Shield of Night|Buckler|Perfumer's Shield|Man-Serpent's Shield|Rickety Shield|Pillory Shield|Red T" +
+  "horn Roundshield|Scripture Wooden Shield|Riveted Wooden Shield|Blue-White Wooden Shield|Rift Shield|" +
+  "Iron Roundshield|Gilded Iron Shield|Ice Crest Shield|Smoldering Shield|Spiralhorn Shield|Coil Shield" +
+  "|Smithscript Shield|Shield of the Guilty|Beastman's Jar-Shield|Kite Shield|Marred Leather Shield|Mar" +
+  "red Wooden Shield|Banished Knight's Shield|Albinauric Shield|Sun Realm Shield|Silver Mirrorshield|Ro" +
+  "und Shield|Scorpion Kite Shield|Twinbird Kite Shield|Blue-Gold Kite Shield|Brass Shield|Great Turtle" +
+  " Shell|Carian Knight's Shield|Large Leather Shield|Horse Crest Wooden Shield|Candletree Wooden Shiel" +
+  "d|Flame Crest Wooden Shield|Hawk Crest Wooden Shield|Beast Crest Heater Shield|Red Crest Heater Shie" +
+  "ld|Blue Crest Heater Shield|Eclipse Crest Heater Shield|Inverted Hawk Heater Shield|Heater Shield|Bl" +
+  "ack Leather Shield|Messmer Soldier Shield|Wolf Crest Shield|Serpent Crest Shield|Golden Lion Shield|" +
+  "Dragon Towershield|Distinguished Greatshield|Crucible Hornshield|Dragonclaw Shield|Briar Greatshield" +
+  "|Erdtree Greatshield|Golden Beast Crest Shield|Jellyfish Shield|Fingerprint Stone Shield|Icon Shield" +
+  "|One-Eyed Shield|Visage Shield|Spiked Palisade Shield|Manor Towershield|Crossed-Tree Towershield|Inv" +
+  "erted Hawk Towershield|Ant's Skull Plate|Redmane Greatshield|Eclipse Crest Greatshield|Cuckoo Greats" +
+  "hield|Golden Greatshield|Gilded Greatshield|Haligtree Crest Greatshield|Wooden Greatshield|Lordsworn" +
+  "'s Shield|Black Steel Greatshield|Verdigris Greatshield|Torch|Steel-Wire Torch|St. Trina's Torch|Gho" +
+  "stflame Torch|Beast-Repellent Torch|Sentry's Torch|Nanaya's Torch|Lamenting Visage|Dryleaf Arts|Dane" +
+  "'s Footwork|Firespark Perfume Bottle|Chilling Perfume Bottle|Frenzyflame Perfume Bottle|Lightning Pe" +
+  "rfume Bottle|Deadly Poison Perfume Bottle|Dueling Shield|Carian Thrusting Shield|Smithscript Dagger|" +
+  "Backhand Blade|Smithscript Cirque|Curseblade's Cirque|Milady|Leda's Sword|Rellana's Twin Blades|Grea" +
+  "t Katana|Dragon-Hunter's Great Katana|Rakshasa's Great Katana|Beast Claw|Red Bear's Claw"
+).split("|");
+
+// Ash of War names (116)
+const REF_ASHES = (
+  "Aspects of the Crucible: Wings|Assassin's Gambit|Barbaric Roar|Barrage|Barricade Shield|Beast's Roar" +
+  "|Black Flame Tornado|Blind Spot|Blinkbolt|Blood Blade|Blood Tax|Bloodhound's Step|Bloody Slash|Bragg" +
+  "art's Roar|Carian Grandeur|Carian Greatsword|Carian Retaliation|Carian Sovereignty|Charge Forth|Chil" +
+  "ling Mist|Cragblade|Determination|Divine Beast Frost Stomp|Double Slash|Dryleaf Whirlwind|Earthshake" +
+  "r|Enchanted Shot|Endure|Eruption|Flame Skewer|Flame Spear|Flame of the Redmanes|Flaming Strike|Ghost" +
+  "flame Call|Giant Hunt|Glintblade Phalanx|Glintstone Pebble|Golden Land|Golden Parry|Golden Slam|Gold" +
+  "en Vow|Gravitas|Ground Slam|Hoarah Loux's Earthshaker|Hoarfrost Stomp|Holy Ground|Ice Spear|Igon's D" +
+  "rake Hunt|Impaling Thrust|Kick|Lifesteal Fist|Lightning Ram|Lightning Slash|Lion's Claw|Loretta's Sl" +
+  "ash|Mighty Shot|No Skill|Overhead Stance|Palm Blast|Parry|Phantom Slash|Piercing Fang|Piercing Throw" +
+  "|Poison Moth Flight|Poisonous Mist|Prayerful Strike|Prelate's Charge|Quickstep|Raging Beast|Rain of " +
+  "Arrows|Raptor of the Mists|Repeating Thrust|Rolling Sparks|Royal Knight's Resolve|Sacred Blade|Sacre" +
+  "d Order|Sacred Ring of Light|Savage Claws|Savage Lion's Claw|Scattershot Throw|Seppuku|Shared Order|" +
+  "Shield Bash|Shield Crash|Shield Strike|Shriek of Sorrow|Sky Shot|Spectral Lance|Spinning Gravity Thr" +
+  "ust|Spinning Slash|Spinning Strikes|Spinning Weapon|Square Off|Stamp (Sweep)|Stamp (Upward Cut)|Stor" +
+  "m Assault|Storm Blade|Storm Stomp|Storm Wall|Stormcaller|Swift Slash|Sword Dance|The Poison Flower B" +
+  "looms Twice|Thops's Barrier|Through and Through|Thunderbolt|Troll's Roar|Unsheathe|Vacuum Slice|Vow " +
+  "of the Indomitable|Wall of Sparks|War Cry|Waves of Darkness|White Shadow's Lure|Wild Strikes|Wing St" +
+  "ance"
+).split("|");
+
+// Crystal tears for the Flask of Wondrous Physick (37)
+const REF_TEARS = [
+ ["Crimson Crystal Tear","Third Church of Marika; also the Minor Erdtree altar in Capital Outskirts"],
+ ["Crimsonspill Crystal Tear","Altus Plateau — Wormface drop"],
+ ["Crimsonburst Crystal Tear","Weeping Peninsula — Erdtree Avatar beneath the Minor Erdtree"],
+ ["Crimsonburst Dried Tear","DLC — Furnace Golem near the army campsite outside Shadow Keep"],
+ ["Cerulean Crystal Tear","Liurnia of the Lakes — Erdtree Avatar; also the Mountaintops East Minor Erdtree avatar"],
+ ["Greenspill Crystal Tear","Mistwood — altar beside the Minor Erdtree"],
+ ["Greenburst Crystal Tear","Caelid — Erdtree Avatar at the Minor Erdtree east of Smoldering Church"],
+ ["Strength-knot Crystal Tear","Stormhill — cliffs northeast of Stormhill Shack, beside a troll"],
+ ["Dexterity-knot Crystal Tear","Liurnia of the Lakes — small island southwest of Boilprawn Shack"],
+ ["Intelligence-knot Crystal Tear","Liurnia — southeast of Road to the Manor, guarded by Spider Hands"],
+ ["Faith-knot Crystal Tear","North of Demi-Human Forest Ruins, down the cliff east of the Church of Pilgrimage"],
+ ["Opaline Hardtear","Northeastern Caelid — Putrid Avatar drop"],
+ ["Speckled Hardtear","Minor Erdtree, Altus Plateau — Wormface drop"],
+ ["Leaden Hardtear","Mt. Gelmir — Ulcerated Tree Spirit drop"],
+ ["Deflecting Hardtear","DLC — Furnace Golem on the main road near the Scorched Ruins"],
+ ["Magic-Shrouding Cracked Tear","Liurnia — Erdtree Avatar under the northeast Minor Erdtree"],
+ ["Flame-Shrouding Cracked Tear","Caelid — Erdtree Avatar at the Minor Erdtree east of Smoldering Church"],
+ ["Lightning-Shrouding Cracked Tear","Northeastern Liurnia of the Lakes — Erdtree Avatar drop"],
+ ["Holy-Shrouding Cracked Tear","Northeastern Liurnia of the Lakes — Erdtree Avatar drop"],
+ ["Stonebarb Cracked Tear","Caelid — Putrid Avatar near the second Minor Erdtree"],
+ ["Spiked Cracked Tear","Mistwood — altar beside the Minor Erdtree"],
+ ["Thorny Cracked Tear","Consecrated Snowfield — Putrid Avatar at the Minor Erdtree east of Ordina"],
+ ["Crimson-Sapping Cracked Tear","DLC — Furnace Golem in the west of the Ancient Ruins of Rauh"],
+ ["Cerulean-Sapping Cracked Tear","DLC — Furnace Golem east of the Cathedral of Manus Metyr, Scadu Altus"],
+ ["Bloodsucking Cracked Tear","DLC — Ruins of Unte, Furnace Golem lit with a Hefty Furnace Pot"],
+ ["Twiggy Cracked Tear","Capital Outskirts — altar at the base of the Minor Erdtree"],
+ ["Winged Crystal Tear","Capital Outskirts — altar among the gravestones just inside"],
+ ["Windy Crystal Tear","Caelid — pit southeast of the Nomadic Merchant near Southern Aeonia Swamp Bank"],
+ ["Glovewort Crystal Tear","DLC — Furnace Golem around Charo's Hidden Grave"],
+ ["Crimson Bubbletear","Mountaintops of the Giants — Erdtree Avatar guarding the eastern Minor Erdtree"],
+ ["Crimsonwhorl Bubbletear","Mountaintops of the Giants — cliff ledge south of Giants' Gravepost"],
+ ["Opaline Bubbletear","Weeping Peninsula — Erdtree Avatar beneath the Minor Erdtree"],
+ ["Cerulean Hidden Tear","Mt. Gelmir Minor Erdtree — Ulcerated Tree Spirit east of the Road of Iniquity"],
+ ["Viridian Hidden Tear","DLC — Furnace Golem roaming around the Ellac River"],
+ ["Purifying Crystal Tear","Second Church of Marika, after defeating Bloody Finger Eleonora"],
+ ["Ruptured Crystal Tear","Liurnia Erdtree Avatar; also the Consecrated Snowfield Putrid Avatar"],
+ ["Oil-Soaked Tear","DLC — Furnace Golem at the Ruins of Unte"]
+];
+
 migrateChecked();
 build();
 setView(view);
