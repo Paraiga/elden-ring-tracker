@@ -182,16 +182,41 @@ Consequences worth knowing:
   datamined params, then reconcile the count against a published total.
 - index.html is now 209KB / 4,041 lines. Still one file, still offline.
 
-### Where this was heading
-Steps 1 and 2 of five sketched on 2026-08-22, cheapest first: **(1) stat
-maths** ✔, **(2) item existence and location checking** ✔, (3) grounded
-generation feeding that data into the prompt, (4) in-tool generation via an API
-key, (5) attack-rating optimisation. Steps 3 and 4 end the tool's offline
-property — that is the real decision, not the code.
+## Done (v13) — grounded prompts
+- **Grounded generation prompt**: the instructions plus all 1,083 real item
+  names, with the model told to choose only from them. 23KB / ~5,900 tokens.
+  Catching a bad name is v12; not producing one is better. The short prompt is
+  still there for when a big paste is awkward.
+- Lists sit **after** the instructions with the key rule repeated below them,
+  and are **one name per line, never comma-separated** — several incantations
+  have commas in their names (`Burn, O Flame!`), so a comma list is ambiguous.
+  The newline form is also the smaller one.
+- **Correction loop**: when a build has problems, one button writes a
+  self-contained prompt — the build as JSON, every finding in plain language,
+  the stat rule, and the real names for *only* the categories that failed
+  (typically 13KB, not 23KB). Paste back, re-import, ticks are kept.
+- `buildToJson()` round-trips identically through `normalizeBuild()`, which is
+  what makes the correction prompt safe to echo back. Also powers "Copy build
+  as JSON" for moving a single build between devices.
+- Verified property: parsing the grounded prompt the way a model would and
+  checking every name yields 1,083 `ok`. Prompt and validator agree exactly.
+- **This did not cost the offline property.** No network, no API key, no new
+  data — it is prompt construction over reference data already in the page.
 
-Step 3 is now much cheaper than it was: the reference data it needs already
-exists in the page, so "grounded generation" is mostly a matter of putting the
-relevant slice into the prompt. Armor remains the one gap in the reference.
+### Where this was heading
+Four of the five steps sketched on 2026-08-22, cheapest first: **(1) stat
+maths** ✔, **(2) item existence and location checking** ✔, **(3) grounded
+generation** ✔, (4) in-tool generation via an API key, (5) attack-rating
+optimisation.
+
+Step 4 is the one that ends the tool's offline, no-account property — that is a
+decision about what the tracker *is*, not a coding problem, and the copy-paste
+loop as it now stands may well be good enough to make it unnecessary. Step 5
+needs weapon scaling data and the damage formula, and is a project rather than
+a feature.
+
+Armor remains the one gap in the reference data, and is the cheapest remaining
+improvement to either checking or grounding.
 
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the

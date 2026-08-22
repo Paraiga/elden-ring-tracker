@@ -357,6 +357,7 @@
   .build-empty .build-title { display: block; margin-bottom: 6px; }
   .build-empty p { color: var(--text-dim); font-size: .92em; line-height: 1.55; max-width: 620px; margin: 0 auto; }
   .build-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+  .build-head-actions { justify-content: flex-start; margin-top: 12px; }
   .prompt-box {
     white-space: pre-wrap; background: #14110c; border: 1px solid var(--border);
     border-radius: 4px; padding: 10px 12px; margin-top: 8px;
@@ -2752,7 +2753,7 @@ function buildEquipStats(b) {
 // ---- the prompt you hand to an LLM ----
 // Lives here rather than in the README so it is one click away at the moment
 // you need it, and so it can never drift out of step with the parser above.
-const BUILD_PROMPT = [
+const BUILD_PROMPT_BODY = [
 "You are helping me plan an Elden Ring character build.",
 "",
 "Reply with ONE JSON object and NOTHING else: no markdown code fences, no",
@@ -2817,8 +2818,146 @@ const BUILD_PROMPT = [
 "- Use base game plus Shadow of the Erdtree content. No mods, no cut content.",
 "- If a category does not apply, give it an empty array. Do not invent items.",
 "",
-"The build I want: "
+""
 ].join("\n");
+
+const BUILD_PROMPT_TAIL = "The build I want: ";
+const BUILD_PROMPT = BUILD_PROMPT_BODY + "\n" + BUILD_PROMPT_TAIL;
+
+// ---- grounded prompts ----
+// The reference data is already in the page, so the cheapest way to stop a
+// model inventing items is to hand it the real list and tell it to choose.
+// Catching a bad name afterwards is step 2; not producing one is better.
+
+const refNames = catKey => {
+  const ref = reference()[catKey];
+  return ref ? ref.canon.map(e => e.name) : null;
+};
+
+// One name per line, NOT comma-separated: several incantations have commas in
+// their names ("Burn, O Flame!", "Flame, Grant Me Strength"), so a comma list
+// is ambiguous about where one item ends. A newline is also one byte rather
+// than two, so this is smaller as well as correct.
+const nameList = names => names.join("\n");
+
+function refListBlocks() {
+  const out = [];
+  EQUIP_DEFS.forEach(d => {
+    const names = refNames(d.key);
+    if (names && names.length) out.push({ label: d.label, names });
+  });
+  return out;
+}
+
+const groundedCount = () => refListBlocks().reduce((n, b) => n + b.names.length, 0);
+
+// Lists go AFTER the instructions and the instruction is repeated below them,
+// so a few hundred names cannot crowd out the rules.
+function groundedPrompt() {
+  const parts = [BUILD_PROMPT_BODY,
+    "============================================================",
+    "REAL ITEM NAMES. Choose only from these lists. Any name you",
+    "use that is not on the matching list will be rejected.",
+    "============================================================"];
+  refListBlocks().forEach(b => {
+    parts.push("", b.label.toUpperCase() + " (" + b.names.length + "), one per line:", nameList(b.names));
+  });
+  parts.push("",
+    "Armor is not listed — I have no reference for it, so use real armor",
+    "names from the game and be careful with them.",
+    "",
+    "Every weapon, talisman, spell, ash of war, spirit ash and crystal tear",
+    "you name must appear verbatim on the list above. Do not invent items,",
+    "and do not use a name from the wrong list.",
+    "", BUILD_PROMPT_TAIL);
+  return parts.join("\n");
+}
+
+// Rebuilds the schema shape from a normalised build, so a build can be handed
+// back to a model (or to another device) as the same JSON it arrived as.
+function buildToJson(b) {
+  const out = {
+    format: "elden-ring-build-v1",
+    name: b.name,
+    startingClass: b.startingClass,
+    description: b.description,
+    playstyle: b.playstyle,
+    statProgression: b.phases.map(p => ({
+      phase: p.label,
+      level: p.level,
+      stats: STAT_DEFS.reduce((o, d) => {
+        if (p.stats[d.key] !== undefined) o[d.label.toLowerCase()] = p.stats[d.key];
+        return o;
+      }, {})
+    })),
+    equipment: {}
+  };
+  const EXPORT_KEY = { ashes: "ashesOfWar", spirits: "spiritAshes" };
+  EQUIP_DEFS.forEach(d => {
+    const list = (b.equipment[d.key] || []).map(it => {
+      const o = { name: it.name };
+      if (it.stage) o.stage = it.stage;
+      if (it.location) o.location = it.location;
+      if (it.notes) o.notes = it.notes;
+      return o;
+    });
+    if (list.length) out.equipment[EXPORT_KEY[d.key] || d.key] = list;
+  });
+  return JSON.stringify(out, null, 2);
+}
+
+// Everything wrong with a build, phrased for the model that produced it, with
+// the real names for exactly the categories that failed — not all 1,083.
+function correctionPrompt(b) {
+  const statIssues = validateBuild(b).filter(i => i.kind === "error");
+  const badCats = new Map();
+  const badItems = [];
+  EQUIP_DEFS.forEach(d => (b.equipment[d.key] || []).forEach(it => {
+    const c = lookupItem(d.key, it.name);
+    if (c.status !== "near" && c.status !== "unknown") return;
+    badItems.push('"' + it.name + '" is not a real ' + d.label.replace(/s$/, "").toLowerCase() +
+      (c.status === "near" ? ' (did you mean "' + c.ref.name + '"?)' : ""));
+    badCats.set(d.key, d.label);
+  }));
+
+  const parts = [
+    "This Elden Ring build JSON has problems. Fix them and reply with the",
+    "corrected JSON only — no code fences, no commentary.",
+    "",
+    "THE BUILD:",
+    buildToJson(b),
+    "",
+    "PROBLEMS:"
+  ];
+  statIssues.forEach(i => parts.push("- " + i.text));
+  badItems.forEach(t => parts.push("- " + t));
+
+  if (statIssues.length) {
+    parts.push("",
+      "The stat rule: in every phase the eight stats added together must equal",
+      "exactly the level plus 79, no stat may go below the starting class's",
+      "value for it, and no stat may go down between phases. Level 30 totals",
+      "109, level 60 totals 139, level 90 totals 169, level 120 totals 199.");
+  }
+  if (badCats.size) {
+    parts.push("", "Replace the bad names with real ones from these lists:");
+    badCats.forEach((label, key) => {
+      const names = refNames(key);
+      if (names) parts.push("", label.toUpperCase() + " (one per line):", nameList(names));
+    });
+  }
+  parts.push("", "Keep everything else about the build the same.");
+  return parts.join("\n");
+}
+
+function buildProblemCount(b) {
+  let n = validateBuild(b).filter(i => i.kind === "error").length;
+  EQUIP_DEFS.forEach(d => (b.equipment[d.key] || []).forEach(it => {
+    const s = lookupItem(d.key, it.name).status;
+    if (s === "near" || s === "unknown") n++;
+  }));
+  return n;
+}
 
 function makeBuildCheckbox(id) {
   const label = document.createElement("label");
@@ -2919,26 +3058,48 @@ function buildEmptyState() {
     "hand it to an LLM with a description of the character you want, and paste the JSON " +
     "it gives you back in."));
   const actions = el("div", "build-actions");
-  const copyBtn = el("button", null, "Copy the prompt");
-  copyBtn.addEventListener("click", () => copyPrompt(copyBtn));
+  actions.appendChild(promptButtons());
   const importBtn = el("button", null, "Paste or import JSON");
   importBtn.addEventListener("click", () => showBuildImporter());
-  actions.appendChild(copyBtn); actions.appendChild(importBtn);
+  actions.appendChild(importBtn);
   card.appendChild(actions);
-  const box = el("pre", "prompt-box", BUILD_PROMPT);
-  card.appendChild(box);
+  card.appendChild(el("div", "stat-note",
+    "The long prompt hands the model every real item name in the game, so it " +
+    "picks from them instead of recalling them. Use it unless the paste is too big."));
+  card.appendChild(el("pre", "prompt-box", BUILD_PROMPT));
   return card;
 }
 
-function copyPrompt(btn) {
+// text is a thunk: the grounded prompt is a few tens of KB and there is no
+// reason to build it until someone actually asks for it.
+function copyText(btn, text) {
+  const payload = typeof text === "function" ? text() : text;
   const done = () => {
     const was = btn.textContent;
     btn.textContent = "Copied";
     setTimeout(() => { btn.textContent = was; }, 1400);
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(BUILD_PROMPT).then(done, () => fallbackCopy(BUILD_PROMPT, done));
-  } else fallbackCopy(BUILD_PROMPT, done);
+    navigator.clipboard.writeText(payload).then(done, () => fallbackCopy(payload, done));
+  } else fallbackCopy(payload, done);
+}
+const copyPrompt = btn => copyText(btn, BUILD_PROMPT);
+
+// Both prompts, offered together wherever one is offered. The grounded one is
+// the better default; the plain one stays for when a short paste matters.
+function promptButtons() {
+  const wrap = document.createDocumentFragment();
+  const grounded = el("button", null, "Copy prompt + " + groundedCount() + " item names");
+  grounded.title = "The prompt plus every real weapon, talisman, spell, ash of war, " +
+    "spirit ash and crystal tear name, so the model picks from real items instead " +
+    "of recalling them.";
+  grounded.addEventListener("click", () => copyText(grounded, groundedPrompt));
+  const plain = el("button", null, "Copy the short prompt");
+  plain.title = "Instructions only, no item lists.";
+  plain.addEventListener("click", () => copyPrompt(plain));
+  wrap.appendChild(grounded);
+  wrap.appendChild(plain);
+  return wrap;
 }
 // file:// pages do not always get the async clipboard, and this tracker is
 // meant to work from a bare double-click, so keep the old path around.
@@ -2971,12 +3132,10 @@ function showBuildImporter() {
   });
   const file = el("button", null, "Load from file");
   file.addEventListener("click", () => document.getElementById("build-file").click());
-  const copyBtn = el("button", null, "Copy the prompt");
-  copyBtn.addEventListener("click", () => copyPrompt(copyBtn));
   const cancel = el("button", null, "Cancel");
   cancel.addEventListener("click", () => renderBuildView());
   actions.appendChild(ok); actions.appendChild(file);
-  actions.appendChild(copyBtn); actions.appendChild(cancel);
+  actions.appendChild(promptButtons()); actions.appendChild(cancel);
   card.appendChild(actions);
 
   main.querySelectorAll(".build-card").forEach(c => c.remove());
@@ -3037,6 +3196,26 @@ function renderOneBuild(main, b) {
       stats.done + " / " + stats.total + " gear (" + Math.round(100 * stats.done / stats.total) + "%)"));
   }
   card.appendChild(head);
+
+  // One entry point for "this build is wrong, go get it fixed", covering stat
+  // faults and bad item names together — they are one round trip to the model,
+  // not two.
+  const problems = buildProblemCount(b);
+  const acts = el("div", "build-actions build-head-actions");
+  if (problems) {
+    const fixBtn = el("button", null,
+      "Copy a prompt to fix " + problems + (problems === 1 ? " problem" : " problems"));
+    fixBtn.title = "Describes everything wrong with this build, includes the build itself, " +
+      "and lists the real names for the categories that failed. Paste it back to the model, " +
+      "then re-import the answer — your equipment ticks are kept.";
+    fixBtn.addEventListener("click", () => copyText(fixBtn, () => correctionPrompt(b)));
+    acts.appendChild(fixBtn);
+  }
+  const jsonBtn = el("button", null, "Copy build as JSON");
+  jsonBtn.title = "The build in its import format, for sharing or editing by hand.";
+  jsonBtn.addEventListener("click", () => copyText(jsonBtn, () => buildToJson(b)));
+  acts.appendChild(jsonBtn);
+  card.appendChild(acts);
 
   if (b.description || b.playstyle) {
     const prose = el("div", "build-prose");

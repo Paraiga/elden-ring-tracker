@@ -44,9 +44,15 @@ A third view, next to Zones and Quests, holding your own character plan: a name
 and description, what to level toward at level 30 / 60 / 90 / 120, and a
 checklist of gear to collect with locations.
 
-Nothing ships with the tracker — you import a build as JSON. The Build tab shows
-the exact prompt to hand an LLM, with a **Copy the prompt** button; paste the
-answer back into the tab (or load it from a `.json` file) and it renders.
+Nothing ships with the tracker — you import a build as JSON. The Build tab gives
+you the prompt to hand an LLM; paste the answer back into the tab (or load it
+from a `.json` file) and it renders.
+
+There are two prompts. **Copy prompt + 1083 item names** includes every real
+weapon, talisman, spell, ash of war, spirit ash and crystal tear in the game and
+tells the model to choose only from them — about 23KB, and the one to use, since
+a model picking from a list invents far less than one recalling from memory.
+**Copy the short prompt** is instructions only, for when a big paste is awkward.
 
 - Several builds can live side by side; chips at the top switch between them.
 - Re-importing a build with the same name replaces it and **keeps your ticks**
@@ -112,6 +118,17 @@ silently**, so an unflagged item always means it was actually verified.
 Name matching is forgiving about the spellings that differ in practice: accents
 (`Miséricorde` / `Misericorde`), the optional `Ash of War: ` prefix, a trailing
 ` Ashes` on spirit ashes, `St.` versus `St`, and `+1` / `+2` suffixes.
+
+### When a build has problems
+
+One button in the build header — **Copy a prompt to fix N problems** — writes a
+self-contained correction prompt: the build itself as JSON, every stat fault and
+bad item name in plain language, and the real names for just the categories that
+failed. Paste it back to the model, re-import the answer, and your equipment
+ticks are kept. The button disappears once the build is clean.
+
+**Copy build as JSON** hands you the build in its import format, for sharing or
+for moving one build between devices without exporting the whole tracker.
 
 ## Saving and backups
 

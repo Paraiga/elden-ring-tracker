@@ -352,6 +352,59 @@ checklist tick to the new ID, the same rule the tracker lives by.
 Cost: index.html is now 209KB / 4,041 lines. Lookups are ~0.0006ms on a hit;
 a miss costs ~2ms because it sweeps the category for a suggestion.
 
+### Grounded prompts, 2026-08-22
+
+Step 3. Catching a bad item name is step 2; not producing one is better. The
+reference data was already in the page, so grounding cost no new data and no
+network — it is prompt construction over `reference()`.
+
+**Two prompts, both offered wherever one was offered before.**
+
+- `groundedPrompt()` — the instructions plus every real weapon, talisman,
+  spell, ash of war, spirit ash and crystal tear name. 23KB, roughly 5,900
+  tokens, 1,083 names. This is the one to use.
+- `BUILD_PROMPT` — instructions only, 3KB. Kept for when a short paste matters.
+
+Two structural choices in the grounded prompt, both deliberate:
+
+- **The lists come after the instructions, and the key rule is repeated below
+  them.** Several hundred names ahead of the rules would bury them.
+- **One name per line, never comma-separated.** Several incantations have
+  commas in their names — `Burn, O Flame!`, `Flame, Grant Me Strength`,
+  `Flame, Cleanse Me` — so a comma-joined list is ambiguous about where an item
+  ends, and a model can reasonably emit `Burn` as an item. A newline is also
+  one byte against two, so the correct form is the smaller one.
+
+**The property worth preserving, and the test that proves it:** parse the
+grounded prompt back the way a model would and feed every name to
+`lookupItem()`. All 1,083 must return `ok`. That means prompt and validator
+agree exactly, so a model that obeys the prompt produces a build that
+validates clean. Re-run it after any change to either side — it is the whole
+point of the feature.
+
+### The correction loop
+
+`correctionPrompt(b)` is the other half, and in practice the more useful one.
+When a build has problems it produces a self-contained prompt: the build
+itself as JSON, every finding in plain language, the stat rule when stats are
+wrong, and **the real names for only the categories that actually failed** —
+two lists, not six, so a typical correction is 13KB rather than 23KB.
+
+One button in the build header covers stat faults and bad item names together,
+because they are one round trip to the model, not two. It disappears when the
+build is clean.
+
+`buildToJson()` reconstructs the import schema from a normalised build, and
+`normalizeBuild(JSON.parse(buildToJson(b)))` is verified to round-trip
+identically. That matters more than it looks: the correction prompt embeds
+that JSON as the shape to echo back, so if the round trip drifted, every
+correction would quietly reshape the build. It also powers the "Copy build as
+JSON" button, which is how you move one build between devices without
+exporting the whole tracker.
+
+Re-importing a correction keeps equipment ticks on items that survived, since
+the build id is unchanged and ticks are keyed by item name.
+
 ### The v8 scope cut — read this before adding anything
 
 v2–v7 also tracked Graces (414), Talismans (157), Key Items (163), Bolstering
