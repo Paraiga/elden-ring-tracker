@@ -48,11 +48,12 @@ Nothing ships with the tracker — you import a build as JSON. The Build tab giv
 you the prompt to hand an LLM; paste the answer back into the tab (or load it
 from a `.json` file) and it renders.
 
-There are two prompts. **Copy prompt + 1083 item names** includes every real
-weapon, talisman, spell, ash of war, spirit ash and crystal tear in the game and
-tells the model to choose only from them — about 23KB, and the one to use, since
-a model picking from a list invents far less than one recalling from memory.
-**Copy the short prompt** is instructions only, for when a big paste is awkward.
+There are two prompts. **Copy prompt + 1271 item rows** includes the game's real
+weapons, armor, talismans, spells, ashes of war, spirit ashes and crystal tears
+as CSV tables and tells the model to choose only from them — about 55KB, and the
+one to use, since a model picking from a list invents far less than one recalling
+from memory. **Copy the short prompt** is instructions only, for when a big paste
+is awkward.
 
 - Several builds can live side by side; chips at the top switch between them.
 - Re-importing a build with the same name replaces it and **keeps your ticks**
@@ -98,14 +99,18 @@ markdown fences, since no two LLM answers are shaped quite alike.
 
 ### Equipment checking
 
-The tab also checks that the gear a build names actually exists, against 1,083
+The tab also checks that the gear a build names actually exists, against 1,271
 real item names embedded in the page:
 
-| Checked | Not checked |
-| --- | --- |
-| Weapons (479, including shields, staves, seals and bows) | Armor |
-| Spells (213), Talismans (154) | "Other" |
-| Ashes of War (116), Spirit Ashes (84), Crystal Tears (37) | |
+| Checked | Partial | Not checked |
+| --- | --- | --- |
+| Weapons (479, including shields, staves, seals and bows) | Armor (188 pieces, 46 sets) | "Other" |
+| Spells (213), Talismans (154) | | |
+| Ashes of War (116), Spirit Ashes (84), Crystal Tears (37) | | |
+
+The armor table covers the sets builds actually name, not all of them. A name
+missing from a partial table is reported as **"not in the list"** — never as an
+error, since absence there proves nothing.
 
 An invented item is flagged on its row. A misspelling of a real one is flagged
 with the correct name and a button to apply it — renaming keeps your checklist
@@ -114,6 +119,10 @@ different region, the wiki's is shown alongside; matching regions stay quiet.
 
 **Categories with no reference list say "not checked" rather than passing
 silently**, so an unflagged item always means it was actually verified.
+
+The reference is stored as CSV, one table per category with a header row naming
+its columns. Adding a column — weapon scaling, armor weight — needs no parser
+change: every column rides along on the entry and goes into the prompt as-is.
 
 Name matching is forgiving about the spellings that differ in practice: accents
 (`Miséricorde` / `Misericorde`), the optional `Ash of War: ` prefix, a trailing

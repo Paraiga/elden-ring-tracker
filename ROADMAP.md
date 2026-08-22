@@ -203,20 +203,49 @@ Consequences worth knowing:
 - **This did not cost the offline property.** No network, no API key, no new
   data — it is prompt construction over reference data already in the page.
 
+## Done (v14) — CSV reference, and armor
+- **The reference data is now CSV**, one table per category with a header row
+  naming its columns, stored as template literals in the same file. Adding a
+  column needs no parser change: `parseCSV` turns every column into a property,
+  `indexRef` carries the whole row onto the entry, and the prompt emits the
+  table verbatim. Weapon scaling can be filled in later without touching code.
+- **Armor added: 188 pieces across 46 sets**, with `slot` and `set` columns.
+  Armor was the last category the checker could not verify at all.
+- **`PARTIAL_REF` marks a list as incomplete.** The armor table covers the sets
+  builds actually name, not all of them, so a miss returns `unchecked` — "not
+  in the list" — rather than `unknown`. A partial list may suggest a spelling
+  correction (tolerance tightened to 2 edits) but may never call an item fake.
+  A false accusation against a real item is worse than no check at all.
+- Summaries count **three outcomes, not two**: verified, not recognised, and
+  outside the list. Lumping the third into the second was the bug this change
+  had to fix once armor arrived.
+- **Prompts now carry CSV instead of name lists**, so the model sees columns —
+  a slot and a set for armor, a location for everything else. CSV quoting also
+  solves the comma-in-name problem (`Burn, O Flame!`) that forced the
+  one-name-per-line form in v13.
+- Verified property, re-run and still exact: parsing the grounded prompt the way
+  a model would and checking every name yields **1,271 `ok`, zero failures**.
+- Grounded prompt is now 55KB. Correction prompts stay small (~8.5KB) because
+  they carry only the tables that actually failed.
+
 ### Where this was heading
 Four of the five steps sketched on 2026-08-22, cheapest first: **(1) stat
 maths** ✔, **(2) item existence and location checking** ✔, **(3) grounded
-generation** ✔, (4) in-tool generation via an API key, (5) attack-rating
-optimisation.
+generation** ✔, (4) in-tool generation via an API key — **deliberately not
+doing**, (5) attack-rating optimisation.
 
-Step 4 is the one that ends the tool's offline, no-account property — that is a
-decision about what the tracker *is*, not a coding problem, and the copy-paste
-loop as it now stands may well be good enough to make it unnecessary. Step 5
-needs weapon scaling data and the damage formula, and is a project rather than
-a feature.
+Step 4 was ruled out on 2026-08-22: it ends the tool's offline, no-account
+property, and the copy-paste loop is good enough to make it unnecessary.
 
-Armor remains the one gap in the reference data, and is the cheapest remaining
-improvement to either checking or grounding.
+**The open question is data, not format.** The CSV shape is ready for weapon
+requirements and scaling; what is missing is a trustworthy source. Recall is
+good enough for item *names* and was used for them, but it is not good enough
+for scaling grades, requirement numbers or weapon categories — wrong numbers in
+a generation prompt are worse than absent ones, because nothing downstream can
+tell which rows are wrong. Sourcing options, roughly in order of fidelity: the
+game's own param tables via extraction tooling, a community param dump, then
+wiki scraping. Whatever the source, it must be baked in as static CSV, never
+fetched at runtime, or the offline property goes with it.
 
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the

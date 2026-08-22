@@ -539,6 +539,56 @@ If you want one live save across devices, that needs a backend (or something lik
 a Gist-backed sync), which is a much larger change and would end the "no
 account, no server" property the tracker currently has.
 
+### CSV reference data and armor, 2026-08-22
+
+The reference moved from JS arrays to **CSV tables** (`REF_CSV`), one per
+category, each with a header row. The point is extensibility: `parseCSV` makes
+every column a property of the row, `indexRef` copies the whole row onto the
+entry, and `refCsvBlocks()` emits the table verbatim into prompts. Adding
+weapon scaling or armor weight is a data edit, not a code change.
+
+Quoting matters here. 116 fields contain commas — mostly locations, but also
+incantation names like `Flame, Grant Me Strength`. CSV quoting handles both,
+which is why prompts could go back to tables after v13 had to use
+one-name-per-line to dodge exactly this problem.
+
+**Armor: 188 pieces, 46 sets**, with `slot` and `set`. Sourced from recall and
+deliberately limited to sets whose piece names are certain — irregular ones
+(`Malenia's Gauntlet` is singular, `Crucible Gauntlets` is shared across two
+sets) are easy to get subtly wrong, and a wrong entry in the reference is worse
+than a missing one: it makes the tool correct a *right* name to a wrong one.
+
+**`PARTIAL_REF` is the mechanism that makes a partial list safe.** For a
+category listed there:
+
+- a hit is still `ok`
+- a near miss still suggests, but at a tightened tolerance (2 edits, not 25% of
+  the name's length)
+- a total miss returns `unchecked`, never `unknown`
+
+So armor can be verified but never accused. The correction prompt respects this
+too: for a partial category it says "looks like a misspelling of X" instead of
+"is not a real X", because the second is a claim the data cannot support.
+
+This forced a counting change. Both summaries used `status !== "ok"` as the
+definition of "bad", which was correct only while a category was wholly checked
+or wholly unchecked. With per-item `unchecked` it reported real armor as "not
+recognised". They now tally verified / not recognised / not in the list
+separately. **If another partial category is ever added, that split is the
+thing to check first.**
+
+The self-test from v13 still holds and was re-run: parse the grounded prompt the
+way a model would, feed every name to `lookupItem()`, expect all `ok` — now
+**1,271 of 1,271, zero failures**.
+
+**On adding scaling data.** The CSV is ready for it; a source is not. Item
+names recalled from a model were good enough because they are checkable against
+counts and against each other, and errors show up as obviously-wrong names.
+Scaling grades, requirement numbers and weapon categories are none of those
+things — a wrong `B` for an `A` is invisible and propagates straight into
+generated builds. Take those from the game's params or a community dump, bake
+them in as static CSV columns, and keep the runtime offline.
+
 ## 7. Repo notes
 
 - Git identity is set **repo-locally** (`Paraiga` /
