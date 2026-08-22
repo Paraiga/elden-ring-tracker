@@ -274,26 +274,50 @@ Consequences worth knowing:
 - Round-trip verified: parse the downloaded CSV back and every one of the 1,271
   rows still resolves through `lookupItem`, zero failures.
 
+## Done (v17) — weapon locations
+- **All 479 weapons now have a location**, parsed from the `==Acquisition==`
+  sections of eldenring.wiki.gg through the MediaWiki API. Locations are not in
+  `regulation.bin` in any usable form, so the wiki was the only real source.
+- **Done the way v12's failure taught:** raw wikitext, parsed deterministically,
+  never routed through a summarising model. The API batches 50 titles per call,
+  so 479 pages cost about a dozen requests.
+- **Fetch and parse were separate steps.** Raw sections were cached to disk
+  first so the parser could be iterated without re-fetching — which mattered,
+  because the first parser missed three of the four ways editors write the
+  label and sent 150 weapons down the prose fallback.
+- Output matches the existing style: `Limgrave — Deathtouched Catacombs — loot`.
+  365 parse to that structured form; 114 fall back to the wiki's own first
+  sentence, capped at 140 characters.
+- **Location cross-checking now works for weapons.** `locationsAgree()` already
+  existed but had nothing to compare weapons against. A build claiming Rivers of
+  Blood is in Caelid now gets the wiki's Mountaintops shown against it; a
+  correct location stays quiet.
+- Self-test unchanged: 1,271 rows, zero failures. The CSV download is now 115KB.
+
 ### Where this was heading
 Of the five steps sketched on 2026-08-22: **(1) stat maths** ✔, **(2) item
-existence and location checking** ✔, **(3) grounded generation** ✔ — by
-attachment rather than by paste, (4) in-tool generation via an API key —
-**deliberately not doing**, **(5) attack-rating optimisation** — reachable, and
-the largest remaining piece of work.
+existence and location checking** ✔, **(3) grounded generation** ✔, (4) in-tool
+generation via an API key — **deliberately not doing**, **(5) attack-rating
+optimisation** — reachable, and the largest remaining piece of work.
 
-Step 5 needs what the same regulation dump already contains: `calcCorrectGraphs`,
-`attackElementCorrects`, `reinforceTypes` and base attack values — the whole
-damage formula. It would turn the tab from *checking* a build into *ranking*
-weapons for one. Still a project rather than a feature: the formula has real
-subtleties (per-stat growth curves, two-handing, affinity interactions) and
-being slightly wrong produces confident nonsense.
+The wiki pipeline built here is reusable, and that changes the order of what is
+cheap. Remaining gaps, in rough order of value:
 
-Remaining data gaps, in rough order of value: **spell requirements** (the spells
-table is still name and location only, so a build asking for a spell the plan
-cannot cast is not yet caught — the same check as weapons, one table over, and
-the params have it), **armor stats** (weight and poise would let the tool check
-equip load; armor is still names-only and partial), and **weapon weight**
-(absent from the dump that was used).
+- **Spell requirements** — the spells table is still name and location only, so
+  a build asking for a spell the plan cannot cast is not caught. The params have
+  the numbers; it is the weapon check one table over.
+- **Armor** — still 188 names with slot and set, no stats and no locations, and
+  still the one `PARTIAL_REF` table. Both the params (`EquipParamProtector`) and
+  the wiki pipeline could fill it.
+- **Ash of War locations** — the ashes table is names only, and the same
+  Acquisition parser would fill it.
+- **Weapon weight** — absent from the regulation dump that was used.
+
+Step 5 still needs `calcCorrectGraphs`, `attackElementCorrects`,
+`reinforceTypes` and base attack values, all of which that same dump already
+contains. It would turn the tab from *checking* a build into *ranking* weapons
+for one, and it remains a project rather than a feature: the formula has real
+subtleties and being slightly wrong produces confident nonsense.
 
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the

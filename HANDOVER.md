@@ -683,6 +683,63 @@ was that prompt and validator agreed exactly — parse the prompt the way a mode
 would, feed every name to `lookupItem()`, expect all `ok`. That test still runs
 against the download instead: 1,271 rows, zero failures.
 
+### Weapon locations, 2026-08-22
+
+All **479 weapons now carry a location**, parsed from the `==Acquisition==`
+sections of [eldenring.wiki.gg](https://eldenring.wiki.gg) via the MediaWiki
+API. Locations are not in `regulation.bin` in any usable form — the params hold
+item lots, not world placement — so the wiki was the only realistic source.
+
+**This is the approach HANDOVER prescribed after the v12 failure**, and it
+worked: fetch raw wikitext and parse it deterministically, rather than routing
+pages through a summarising model. Note that `WebFetch` *is* such a model, so it
+is the wrong tool for this job however convenient it looks. The MediaWiki API
+also batches 50 titles per request, so 479 pages cost about a dozen calls
+instead of 479.
+
+**Fetch and parse are separate scripts on purpose.** The raw Acquisition
+sections were cached to disk first, then parsed offline, so the parser could be
+iterated a dozen times without touching the wiki again. Do the same if this ever
+needs redoing.
+
+Output format matches the existing location style, `Region — Place — how`:
+
+    Uchigatana        Limgrave — Deathtouched Catacombs — loot
+    Moonveil          Caelid — Gael Tunnel — guaranteed drop
+    Rivers of Blood   Mountaintops of the Giants — guaranteed drop
+
+**Format variation is the whole difficulty.** Editors write the label at least
+four ways — `'''Loot:'''`, `'''Loot''':`, and either wrapped in `<u>` — and the
+first parser silently missed three of them, sending 150 weapons down the prose
+fallback. Two more traps worth remembering:
+
+- **Section headings contain `=`** (they embed `[[File:...|link=Acquisition]]`),
+  so sections must be found line by line. A `[^=]*` character class fails on
+  nearly every page, which is what made the first run look like the data was
+  missing.
+- **`Mt.` and `St.` look like sentence ends.** The prose fallback split on
+  `". "` and truncated "First Mt. Gelmir Campsite" to "First Mt".
+
+Where a page has no labelled line, the first sentence of prose is used, capped
+at 140 characters (114 entries). Those read fine — "Found on a corpse in
+Stormveil Castle, near the Stormveil Cliffside grace" — but they are the ones to
+re-check first if anything looks off. Weapons dropped by common enemies across
+many regions render as "Limgrave and elsewhere — drop", which is honest about
+being farmable rather than sited.
+
+Two known soft spots: `Beast Claw` needs an explicit title override because its
+own name redirects to a disambiguation page (`TITLE_OVERRIDES` in the fetch
+script), and a handful of entries name a boss where a place would read better
+(`Serpent-Hunter — Praetor Rykard — loot`).
+
+**What this unlocked:** location cross-checking now works for weapons. It
+already existed — `locationsAgree()` compares at region granularity — but had
+nothing to compare weapons against. A build claiming Rivers of Blood is in
+Caelid now gets the wiki's Mountaintops shown against it, while a correct
+location stays quiet.
+
+The combined CSV download is now 115KB.
+
 ## 7. Repo notes
 
 - Git identity is set **repo-locally** (`Paraiga` /

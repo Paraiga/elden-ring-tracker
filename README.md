@@ -133,6 +133,11 @@ max upgrade, and passive status buildup. So a verified weapon shows what it is:
 
 > **Rivers of Blood** — Katana · somber +10 · needs 12 Str, 18 Dex, 20 Arc ·
 > scales E Str, B Dex, D Arc · Bleed 50
+> *wiki: Mountaintops of the Giants — guaranteed drop*
+
+Every weapon also carries where to find it, parsed from the wiki's Acquisition
+sections, so the location cross-check works for weapons too: name the wrong
+region and the tab shows the right one against it.
 
 **And the tab checks that your build can actually wield its own weapons.** If
 the final phase never reaches 23 Intelligence, a plan built around Moonveil is
