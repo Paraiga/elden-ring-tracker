@@ -797,6 +797,60 @@ effect and weight fields on the wiki itself; `Latenna the Albinauric` and
 The CSV download is now 190KB across 35 columns. That is large for a paste and
 irrelevant for an attachment, which is why it is a download.
 
+### The data pipeline, complete armor, and affinities, 2026-08-22
+
+**`tools/` now holds the pipeline** that generates the reference data. It had
+been a pile of session-local scripts, which meant the 1,713 rows in index.html
+were effectively unreproducible. See `tools/README.md` for how to run it and,
+more importantly, for the list of wiki-parsing traps — every one of which
+produced *wrong data rather than an error*, which is the dangerous kind.
+
+These are build-time only. index.html is still one self-contained file that
+works from `file://` with no build step, and that property is not up for
+negotiation: splitting the data out would break double-clicking it, because
+`fetch()` of a local file is blocked by CORS from `file://`.
+
+`params-sync.js` **refuses to write if its weapon list disagrees with
+index.html.** That guard is the reason the param data can be trusted — two
+independently sourced lists agreeing on exactly 479 armaments is much stronger
+evidence than either alone. If a future patch dump disagrees, reconcile
+deliberately; do not assume the newer file is right.
+
+**Armor is complete: 630 pieces, 156 sets**, from the wiki's Head/Chest/Arms/Legs
+categories plus its Armor Sets page. The 187 we had were all correct — zero
+wrong names, zero wrong slots — just a third of the game. Altered variants are
+excluded deliberately: same piece re-tailored, not a separate item.
+
+The Armor Sets page needed three fixes before it parsed correctly, and each one
+failed *silently*, filing pieces under the previous set rather than erroring:
+DLC headings carry `{{SOTE}}` after the link; an `Armor Pieces` section below
+the sets uses identical headings for things that are not sets; and `Cut Content`
+lists a set that is not in the game. The parser now resets the current set to
+null on any heading it cannot read, so a miss drops pieces instead of
+mis-filing them. `selftest.js` guards this specifically by failing on any set
+with more than six pieces — that is the signature of the bug.
+
+**`PARTIAL_REF` is empty now.** Armor was the last partial table. The mechanism
+stays as a policy hook: if a table is ever added that cannot be exhaustive,
+listing it there keeps the checker from calling a real item fake.
+
+**Affinities.** `"Blood Uchigatana"` was being reported as a fake weapon, which
+is a false accusation against one of the most commonly named items in the game.
+`lookupItem` now strips a leading affinity from a weapon name and resolves the
+base weapon — but only after the plain lookup misses, so `Fire Knight's
+Greatsword` is not mistaken for a Fire infusion of `Knight's Greatsword`.
+
+Two consequences worth keeping:
+
+- An affinity on a weapon whose `infusible` column says `no` is a **named
+  fault**, not a spelling suggestion: `Occult Reduvia` reports that Reduvia is
+  unique and takes no affinity.
+- **The meta line suppresses scaling and passive for an infused name.** Those
+  columns are the Standard-affinity values and an infusion rewrites both, so
+  showing them beside "Blood Uchigatana" would be a confident wrong answer. It
+  says "scaling and passive change with the affinity" instead. If the twelve
+  non-standard affinities are ever imported, this is the line to revisit.
+
 ## 7. Repo notes
 
 - Git identity is set **repo-locally** (`Paraiga` /

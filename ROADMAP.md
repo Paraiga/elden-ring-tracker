@@ -323,27 +323,63 @@ Consequences worth knowing:
 - Self-test still exact: 1,270 rows, zero failures. CSV download 190KB,
   35 columns.
 
+## Done (v19) — complete armor, affinities, and a repeatable pipeline
+- **The data pipeline is in the repo now** (`tools/`), where before it was a
+  pile of throwaway scripts. `params-sync.js` fills the weapon columns from the
+  game's params, `wiki-sync.js` fills everything else from the wiki, and
+  `selftest.js` is the check that has to pass before committing. Not runtime
+  dependencies — index.html is still one file with no build step — but the
+  1,713 rows inside it can now be regenerated after a patch instead of
+  hand-edited.
+- **Armor is complete: 630 pieces, 156 sets**, up from 187 and 46. Taken from
+  the wiki's own Head/Chest/Arms/Legs categories rather than recall, with set
+  membership from its Armor Sets page. Altered variants are excluded — same
+  piece re-tailored, not a separate item.
+- **`PARTIAL_REF` is now empty.** Armor was the last partial table, so invented
+  armor is finally caught rather than waved through as "not in the list". The
+  mechanism stays as a policy hook for any future table that cannot be
+  exhaustive.
+- **Infused weapon names work.** `"Blood Uchigatana"` was being reported as a
+  fake item — one of the most-named things in the game. It now resolves to
+  Uchigatana with a Blood affinity, and the *scaling and passive are suppressed*
+  for infused names, because the table's letters are the Standard-affinity ones
+  and an infusion rewrites both.
+- **And an affinity on a weapon that cannot take one is now a named fault.**
+  `"Occult Reduvia"` reports that Reduvia is unique and takes no affinity,
+  which the new `infusible` column makes checkable.
+- Self-test: 1,713 rows, zero unresolved. CSV download 261KB.
+
 ### Where this was heading
-Of the five steps sketched on 2026-08-22: **(1) stat maths** ✔, **(2) item
-existence and location checking** ✔, **(3) grounded generation** ✔, (4) in-tool
-generation via an API key — **deliberately not doing**, **(5) attack-rating
-optimisation** — the only large piece left.
+Steps 1–3 of the plan sketched on 2026-08-22 are done: **armor completed**,
+**infusible surfaced**, and **affinities handled** — the last as a correctness
+fix rather than optimizer groundwork, because the checker was rejecting real
+builds.
 
-The data gaps that remain are small and mostly not fillable from these sources:
+What remains is the step that changes what the tool *is*:
 
-- **Ash of War FP cost** — 39 of 116; the rest have no cost to list.
-- **Which weapons an Ash of War fits** — not in the infobox; would need the
-  params, and is the one genuinely useful gap left.
-- **A handful of blanks the wiki itself does not fill** — one talisman's effect,
-  two spirit ashes whose pages are NPC pages.
-- **Armor beyond the common sets** — still `PARTIAL_REF`, still 46 sets. The
-  pipeline could fill the rest if the names were sourced first.
+**Attack rating.** Base attack, `calcCorrectGraphs`, `attackElementCorrects` and
+`reinforceTypes` are all in the regulation dump `params-sync.js` already
+downloads. Computing AR at a given stat spread turns scaling letters — a poor
+proxy, since a B on one weapon can beat an A on another — into real numbers.
+Two-handing (1.5× effective Strength) and the twelve non-standard affinities
+come with it; the affinities are deliberately not in the table today because
+3,216 rows would be noise for a name checker and are substance only for a
+solver.
 
-Step 5 still needs `calcCorrectGraphs`, `attackElementCorrects`,
-`reinforceTypes` and base attack values, all in the regulation dump already
-used. It would turn the tab from *checking* a build into *ranking* weapons for
-one, and remains a project rather than a feature: the formula has real
-subtleties and being slightly wrong produces confident nonsense.
+**Then the inversion.** Once AR is computable, the tool can rank weapons for a
+build instead of checking one, and the prompt carries a computed shortlist
+rather than a 261KB attachment. That is the point at which this stops being a
+build checker and becomes a build generator — and the point at which the CSV
+stops growing, because more data would no longer be going into the prompt.
+
+Both need verification against an existing calculator built in from the start.
+The formula has real subtleties — per-stat growth curves, affinity calc-correct
+swaps, status buildup scaling — and being slightly wrong produces confident
+nonsense, which is worse than no numbers at all.
+
+Smaller gaps still open: talisman effects are prose rather than numbers (which
+needs `SpEffectParam`, not in this dump), Ash of War FP is 39 of 116 because
+the rest have none, and no table says which weapons an Ash of War fits.
 
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the

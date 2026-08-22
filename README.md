@@ -49,7 +49,7 @@ you the prompt to hand an LLM; paste the answer back into the tab (or load it
 from a `.json` file) and it renders.
 
 **Copy the prompt**, then **Download item data (CSV)** and attach that file to
-the same chat. The CSV is every real item in the game — 1,270 rows across
+the same chat. The CSV is every real item in the game — 1,713 rows across
 weapons, armor, talismans, spells, ashes of war, spirit ashes and crystal tears
 — and the prompt tells the model to choose only from it, so it picks from real
 items instead of recalling them. For weapons the file also carries what each one
@@ -102,18 +102,19 @@ markdown fences, since no two LLM answers are shaped quite alike.
 
 ### Equipment checking
 
-The tab also checks that the gear a build names actually exists, against 1,270
+The tab also checks that the gear a build names actually exists, against 1,713
 real item names embedded in the page:
 
-| Checked | Partial | Not checked |
-| --- | --- | --- |
-| Weapons (479, including shields, staves, seals and bows) | Armor (187 pieces, 46 sets) | "Other" |
-| Spells (213), Talismans (154) | | |
-| Ashes of War (116), Spirit Ashes (84), Crystal Tears (37) | | |
+| Checked | Not checked |
+| --- | --- |
+| Weapons (479, including shields, staves, seals and bows) | "Other" |
+| Armor (630 pieces, 156 sets) | |
+| Spells (213), Talismans (154) | |
+| Ashes of War (116), Spirit Ashes (84), Crystal Tears (37) | |
 
-The armor table covers the sets builds actually name, not all of them. A name
-missing from a partial table is reported as **"not in the list"** — never as an
-error, since absence there proves nothing.
+**Infused weapon names work too.** "Blood Uchigatana" resolves to Uchigatana
+with a Blood affinity — and an affinity on a weapon that cannot take one is
+called out, since "Occult Reduvia" is not a thing.
 
 An invented item is flagged on its row. A misspelling of a real one is flagged
 with the correct name and a button to apply it — renaming keeps your checklist

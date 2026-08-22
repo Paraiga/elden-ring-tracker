@@ -1,0 +1,117 @@
+#!/usr/bin/env node
+/**
+ * selftest.js — the check that has to pass after any change to the reference
+ * data or the name matching.
+ *
+ *   node tools/selftest.js
+ *
+ * The property: build the CSV the Build tab hands to a model, parse it back the
+ * way a model would, and feed every name to lookupItem(). All of them must
+ * resolve to themselves. That is what makes prompt and validator agree — a
+ * model that obeys the prompt produces a build that validates clean.
+ *
+ * It also checks the shape of the data itself, because a table can round-trip
+ * perfectly while being wrong: sets that are too large usually mean a wiki
+ * parse mis-attributed pieces, and a missing category or slot means an
+ * infobox was not read.
+ */
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+
+const HTML = path.join(__dirname, "..", "index.html");
+const html = fs.readFileSync(HTML, "utf8");
+
+// Pull the page's own script into Node with just enough DOM to let it define
+// its functions. Nothing is rendered; we only want the data and the matcher.
+const RECT = { height: 0, width: 0, top: 0, left: 0, right: 0, bottom: 0, x: 0, y: 0 };
+const noop = () => {};
+const fakeEl = () => new Proxy(function () {}, {
+  get: (t, k) => {
+    if (k === "getBoundingClientRect") return () => RECT;
+    if (k === "children" || k === "childNodes") return [];
+    if (k === Symbol.toPrimitive) return () => 0;
+    if (k === "textContent" || k === "value" || k === "innerHTML") return "";
+    return fakeEl();
+  },
+  set: () => true,
+  apply: () => fakeEl()
+});
+const document = new Proxy({}, { get: (t, k) => (k === "querySelectorAll" ? () => [] : fakeEl()) });
+const store = {};
+const localStorage = {
+  getItem: k => (k in store ? store[k] : null),
+  setItem: (k, v) => { store[k] = String(v); },
+  removeItem: k => { delete store[k]; }
+};
+
+const start = html.indexOf("<script>"), end = html.lastIndexOf("</script>");
+const api = new Function("document", "localStorage", "window", "ResizeObserver", "navigator",
+  html.slice(start + 8, end) +
+  "\nreturn { itemsCsv, parseCSV, lookupItem, REF_CSV, EQUIP_DEFS };"
+)(document, localStorage,
+  { addEventListener: noop, matchMedia: () => ({ matches: false, addEventListener: noop }) },
+  function () { return { observe: noop, disconnect: noop }; },
+  { clipboard: null });
+
+let failures = 0;
+const fail = m => { console.log("  FAIL " + m); failures++; };
+
+// ---- 1. every row in the download resolves to itself ----
+const rows = api.parseCSV(api.itemsCsv());
+const unresolved = [];
+rows.forEach(r => {
+  const hit = api.lookupItem(r.type, r.name);
+  if (hit.status !== "ok" || hit.ref.name !== r.name) {
+    unresolved.push(r.type + ": " + r.name + " -> " + hit.status);
+  }
+});
+console.log("round-trip: " + rows.length + " rows, " + unresolved.length + " unresolved");
+unresolved.slice(0, 20).forEach(u => fail(u));
+if (unresolved.length > 20) fail("(+" + (unresolved.length - 20) + " more)");
+
+// ---- 2. per-table shape ----
+const REQUIRED = {
+  weapons: ["category", "maxUpgrade", "infusible", "location"],
+  armor: ["slot", "location"],
+  talismans: ["location"],
+  physick: ["location"],
+  spells: ["category", "location"],
+  ashes: ["location"],
+  spirits: []
+};
+console.log("\ntables:");
+Object.keys(api.REF_CSV).forEach(key => {
+  const t = api.parseCSV(api.REF_CSV[key]);
+  const gaps = (REQUIRED[key] || []).map(col => {
+    const n = t.filter(r => !r[col]).length;
+    return n ? col + "=" + n : null;
+  }).filter(Boolean);
+  console.log("  " + key.padEnd(10), String(t.length).padStart(5),
+    gaps.length ? " missing: " + gaps.join(", ") : "");
+  // a blank column is worth reporting but only a hard-missing name is a failure
+  if (t.some(r => !r.name)) fail(key + " has a row with no name");
+});
+
+// ---- 3. armor sets should look like sets ----
+const armor = api.parseCSV(api.REF_CSV.armor);
+const bySet = {};
+armor.forEach(r => { if (r.set) (bySet[r.set] = bySet[r.set] || []).push(r.name); });
+const oversized = Object.keys(bySet).filter(s => bySet[s].length > 6);
+console.log("\narmor: " + armor.length + " pieces, " + Object.keys(bySet).length + " sets, " +
+  armor.filter(r => !r.set).length + " standalone");
+oversized.forEach(s => fail("set '" + s + "' has " + bySet[s].length +
+  " pieces — a wiki heading probably failed to parse"));
+
+// ---- 4. affinity handling ----
+console.log("\naffinities:");
+[["Blood Uchigatana", "ok"], ["Heavy Greatsword", "ok"], ["Occult Reduvia", "affinity"],
+ ["Fire Knight's Greatsword", "ok"], ["Sword of Doom", "unknown"]].forEach(([name, want]) => {
+  const got = api.lookupItem("weapons", name).status;
+  console.log("  " + name.padEnd(26), got);
+  if (got !== want) fail(name + ": expected " + want + ", got " + got);
+});
+
+console.log("\n" + (failures ? failures + " FAILURE(S)" : "all checks passed"));
+process.exit(failures ? 1 : 0);

@@ -13,3 +13,7 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# tools/ caches — large downloads, regenerable with --refetch
+tools/.wiki-cache.json
+tools/.regulation-*.json
