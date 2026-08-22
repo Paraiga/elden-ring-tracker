@@ -643,6 +643,46 @@ different source — `EquipParamProtector` for armor, and weapon weight lives in
 involve a weapon problem now carry the full weapon table (~28KB) because
 re-picking a weapon needs the requirements to pick against.
 
+### The reference as a download, 2026-08-22
+
+**Where the data lives:** inside `index.html`, in `REF_CSV` — seven CSV tables
+stored as template literals, one per equipment category, each with its own
+header row. There are no separate data files, and deliberately so: `fetch()` of
+a local file is blocked by CORS from `file://`, so splitting the data out would
+break double-clicking `index.html`, which is a property worth more than tidy
+file layout.
+
+**What changed:** the grounded prompt used to paste all seven tables inline,
+74KB of it. That does not fit in a chat box, so the feature was good in theory
+and unusable in practice. The data now leaves the page as a **file to attach**
+instead: `itemsCsv()` builds one combined table and `downloadItemsCsv()` hands
+it over as `elden-ring-items.csv`.
+
+Design points worth keeping:
+
+- **One table, not seven.** One attachment beats seven, and a browser prompts
+  before allowing multiple downloads from one click anyway. The `type` column
+  carries what the separate tables used to.
+- **`type` is the equipment key** (`weapons`, `physick`, `spirits`, …) rather
+  than a readable label, so a row maps directly onto the key the build JSON has
+  to use. Do not "improve" this into prose.
+- **Columns union automatically.** `itemsCsvColumns()` starts from the shared
+  lead columns and appends whatever else the tables declare, in declaration
+  order. Adding a column to a table puts it in the download with no other edit.
+- **The file is sparse** — an armor row leaves the thirteen weapon columns
+  empty — which costs about 30% in size (92KB against 63KB of actual CSV). That
+  is the price of one table, and it is irrelevant for an attachment.
+
+**Correction prompts no longer paste tables either**, which took them from 28KB
+to 1.7KB. In the chat that produced the build the CSV is already attached
+above, so re-sending it was pure waste; the prompt now names the file and the
+`type` values to look at, and says to attach it again if the chat is new.
+
+**If you ever reinstate an inline form**, the thing that made the old one work
+was that prompt and validator agreed exactly — parse the prompt the way a model
+would, feed every name to `lookupItem()`, expect all `ok`. That test still runs
+against the download instead: 1,271 rows, zero failures.
+
 ## 7. Repo notes
 
 - Git identity is set **repo-locally** (`Paraiga` /

@@ -48,12 +48,15 @@ Nothing ships with the tracker — you import a build as JSON. The Build tab giv
 you the prompt to hand an LLM; paste the answer back into the tab (or load it
 from a `.json` file) and it renders.
 
-There are two prompts. **Copy prompt + 1271 item rows** includes the game's real
+**Copy the prompt**, then **Download item data (CSV)** and attach that file to
+the same chat. The CSV is every real item in the game — 1,271 rows across
 weapons, armor, talismans, spells, ashes of war, spirit ashes and crystal tears
-as CSV tables and tells the model to choose only from them — about 55KB, and the
-one to use, since a model picking from a list invents far less than one recalling
-from memory. **Copy the short prompt** is instructions only, for when a big paste
-is awkward.
+— and the prompt tells the model to choose only from it, so it picks from real
+items instead of recalling them. For weapons the file also carries what each one
+needs to be wielded, which the model is told to respect.
+
+It is an attachment rather than part of the prompt because the inline version
+ran to 74KB, which does not fit in a chat box.
 
 - Several builds can live side by side; chips at the top switch between them.
 - Re-importing a build with the same name replaces it and **keeps your ticks**

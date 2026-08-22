@@ -252,24 +252,48 @@ Consequences worth knowing:
   them onto the entry, and the prompt emitted them, all untouched.
 - Self-test still exact: 1,271 names, zero failures. Grounded prompt 74KB.
 
+## Done (v16) — the reference is a download, not a paste
+- **The 74KB grounded prompt is gone.** It was too large to paste into a chat
+  box, which made it useless in practice however good the idea was. The same
+  data now downloads as a file you attach instead.
+- **One button, one file:** `elden-ring-items.csv`, all 1,271 rows as a single
+  table with a `type` column naming the equipment list each row belongs to.
+  Seven tables became one so it is one attachment rather than seven.
+- `type` is the equipment key (`weapons`, `talismans`, `physick`, …), not a
+  prose label, so a row maps straight onto the key the build JSON must use.
+- **Columns are unioned automatically** from whatever the tables declare, with
+  the shared ones first. A column added to the data appears in the download
+  without being named anywhere in the export code.
+- **The prompt shrank from 74KB to 3.6KB** and now tells the model to choose
+  only from the attachment, explains the weapon columns, and states the
+  requirement rule the tool enforces.
+- **Correction prompts shrank from 28KB to 1.7KB.** They used to paste whole
+  tables back; they now point at the CSV, which in the chat that produced the
+  build is already attached above. If it is a new chat, the prompt says to
+  attach it again.
+- Round-trip verified: parse the downloaded CSV back and every one of the 1,271
+  rows still resolves through `lookupItem`, zero failures.
+
 ### Where this was heading
 Of the five steps sketched on 2026-08-22: **(1) stat maths** ✔, **(2) item
-existence and location checking** ✔, **(3) grounded generation** ✔, (4) in-tool
-generation via an API key — **deliberately not doing**, **(5) attack-rating
-optimisation** — now genuinely within reach.
+existence and location checking** ✔, **(3) grounded generation** ✔ — by
+attachment rather than by paste, (4) in-tool generation via an API key —
+**deliberately not doing**, **(5) attack-rating optimisation** — reachable, and
+the largest remaining piece of work.
 
-Step 5 needs what the same dump already contains: `calcCorrectGraphs`,
-`attackElementCorrects`, `reinforceTypes` and base attack values. That is the
-full damage formula, and it would turn the tab from *checking* a build into
-*ranking* weapons for one. It is still a project rather than a feature — the
-formula has real subtleties (per-stat growth curves, two-handing, affinity
-interactions) and being slightly wrong produces confident nonsense.
+Step 5 needs what the same regulation dump already contains: `calcCorrectGraphs`,
+`attackElementCorrects`, `reinforceTypes` and base attack values — the whole
+damage formula. It would turn the tab from *checking* a build into *ranking*
+weapons for one. Still a project rather than a feature: the formula has real
+subtleties (per-stat growth curves, two-handing, affinity interactions) and
+being slightly wrong produces confident nonsense.
 
-Remaining data gaps, in rough order of value: **armor stats** (weight and poise
-would let the tool check equip load, and armor is still names-only and partial),
-**weapon weight** (absent from this dump), and **spell requirements** (the
-spells table is still name and location only, so a build asking for a spell the
-plan cannot cast is not yet caught — the same check as weapons, one table over).
+Remaining data gaps, in rough order of value: **spell requirements** (the spells
+table is still name and location only, so a build asking for a spell the plan
+cannot cast is not yet caught — the same check as weapons, one table over, and
+the params have it), **armor stats** (weight and poise would let the tool check
+equip load; armor is still names-only and partial), and **weapon weight**
+(absent from the dump that was used).
 
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the

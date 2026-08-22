@@ -2907,10 +2907,18 @@ const BUILD_PROMPT_BODY = [
 "    Vagabond lv9: 15 10 11 14 13 9 9 7",
 "    Confessor lv10: 10 13 10 12 12 9 14 9",
 '- "stage" is one of: start, early, mid, late, endgame — when I should have it.',
-'- Use each item\'s EXACT in-game name, spelled as the game spells it. I check',
-"  weapon, talisman, spell, spirit ash and ash of war names against a reference",
-"  list, and anything that does not match exactly is flagged. Do not invent",
-"  items, and do not paraphrase a real one.",
+'- I have attached elden-ring-items.csv. It is every real weapon, armor piece,',
+"  talisman, spell, ash of war, spirit ash and crystal tear in the game.",
+"  CHOOSE ONLY FROM IT. Its \"type\" column says which equipment list a row",
+'  belongs to, and "name" is the exact spelling I check against. Copy names',
+"  verbatim. Do not invent items, do not paraphrase a real one, and do not use",
+"  a name from the wrong type.",
+"- For weapons the CSV also gives category, maxUpgrade (25 means smithing",
+"  stones, 10 means somber), reqStr..reqArc — the stats needed to wield it —",
+"  and scaleStr..scaleArc, the scaling grades at max upgrade. I CHECK THE",
+"  REQUIREMENTS: every weapon must be wieldable at the final phase's stats.",
+"  Prefer weapons that scale with the stats the build actually levels.",
+"- The armor rows cover the common sets only. Other real armor is allowed.",
 '- Every entry needs a "location": where in the world I actually pick it up,',
 "  precise enough to find it (region plus landmark, boss drop, merchant, etc).",
 '- Keep "notes" to one short line, and only where it earns its place.',
@@ -2945,35 +2953,52 @@ function refCsvBlocks() {
   return out;
 }
 
-const groundedCount = () => refCsvBlocks().reduce((n, b) => n + b.count, 0);
+// One table instead of seven, so the whole reference is a single attachment.
+// The lead columns are the ones several tables share; everything else is
+// appended in the order the tables declare it, so a column added to the data
+// appears here without being named anywhere.
+const ITEMS_CSV_LEAD = ["type", "name", "category", "slot", "set", "location"];
+const ITEMS_CSV_FILE = "elden-ring-items.csv";
 
-// Lists go AFTER the instructions and the instruction is repeated below them,
-// so a few hundred names cannot crowd out the rules.
-function groundedPrompt() {
-  const parts = [BUILD_PROMPT_BODY,
-    "============================================================",
-    "REAL ITEM NAMES, as CSV. Choose only from these tables. Any",
-    "name you use that is not in the matching table will be",
-    "rejected. The first line of each table names its columns.",
-    "============================================================"];
+const csvQuote = v => {
+  const s = String(v == null ? "" : v);
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+};
+
+function itemsCsvColumns() {
+  const cols = ITEMS_CSV_LEAD.slice();
   refCsvBlocks().forEach(b => {
-    parts.push("", b.label.toUpperCase() + " (" + b.count + " rows):", b.csv);
+    csvSplit(b.csv.split(/\r?\n/)[0]).forEach(c => {
+      c = c.trim();
+      if (c && cols.indexOf(c) < 0) cols.push(c);
+    });
   });
-  parts.push("",
-    "In the weapon table, maxUpgrade 25 means smithing stones and 10 means",
-    "somber stones; reqStr..reqArc are the stats needed to wield it; scaleStr..",
-    "scaleArc are the scaling grades at max upgrade. Only pick weapons the",
-    "final phase's stats can actually wield.",
-    "",
-    "The armor table is incomplete — it covers the common sets only. You may",
-    "name armor outside it, but be careful to use real names.",
-    "",
-    "Every weapon, talisman, spell, ash of war, spirit ash and crystal tear",
-    "you name must appear verbatim on the list above. Do not invent items,",
-    "and do not use a name from the wrong list.",
-    "", BUILD_PROMPT_TAIL);
-  return parts.join("\n");
+  return cols;
 }
+
+// "type" is the equipment key, not a prose label, so a row maps straight onto
+// the key the build JSON has to use.
+function itemsCsv() {
+  const cols = itemsCsvColumns();
+  const lines = [cols.join(",")];
+  refCsvBlocks().forEach(b => {
+    parseCSV(b.csv).forEach(row => {
+      row.type = b.key;
+      lines.push(cols.map(c => csvQuote(row[c])).join(","));
+    });
+  });
+  return lines.join("\n");
+}
+
+function downloadItemsCsv() {
+  const blob = new Blob([itemsCsv()], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = ITEMS_CSV_FILE;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 
 // Rebuilds the schema shape from a normalised build, so a build can be handed
 // back to a model (or to another device) as the same JSON it arrived as.
@@ -3051,16 +3076,19 @@ function correctionPrompt(b) {
   if (reqIssues.length) {
     parts.push("",
       "Every weapon must be wieldable at the final phase's stats. Either raise",
-      "the stats to meet the requirement or choose a weapon the plan can hold.",
-      "The weapon table below gives each weapon's requirements.");
+      "the stats to meet the requirement or choose a weapon the plan can hold;",
+      "the CSV's reqStr..reqArc columns give each weapon's requirements.");
     if (!badCats.has("weapons")) badCats.set("weapons", "Weapons");
   }
+  // The tables are not pasted in. They are attached, and in the chat that
+  // produced this build they are already above.
   if (badCats.size) {
-    parts.push("", "Replace the bad names with real ones from these lists:");
-    badCats.forEach((label, key) => {
-      const csv = refCsv(key);
-      if (csv) parts.push("", label.toUpperCase() + " (CSV, header first):", csv);
-    });
+    const types = [];
+    badCats.forEach((label, key) => types.push(key));
+    parts.push("",
+      "Replace the bad names with real ones from " + ITEMS_CSV_FILE + " — the",
+      "rows whose type is " + joinList(types) + ". If this is a new chat, attach",
+      "that file again; the tracker's Build tab has a button to download it.");
   }
   parts.push("", "Keep everything else about the build the same.");
   return parts.join("\n");
@@ -3180,9 +3208,10 @@ function buildEmptyState() {
   actions.appendChild(importBtn);
   card.appendChild(actions);
   card.appendChild(el("div", "stat-note",
-    "The long prompt hands the model the game's real item names as CSV, so it " +
-    "picks from them instead of recalling them. Armor is the one partial " +
-    "table. Use it unless the paste is too big."));
+    "Attach the CSV to the chat along with the prompt. It is every real item in " +
+    "the game, so the model picks from them instead of recalling them — and for " +
+    "weapons it carries the stats needed to wield them. Armor is the one " +
+    "partial table."));
   card.appendChild(el("pre", "prompt-box", BUILD_PROMPT));
   return card;
 }
@@ -3206,16 +3235,15 @@ const copyPrompt = btn => copyText(btn, BUILD_PROMPT);
 // the better default; the plain one stays for when a short paste matters.
 function promptButtons() {
   const wrap = document.createDocumentFragment();
-  const grounded = el("button", null, "Copy prompt + " + groundedCount() + " item rows");
-  grounded.title = "The prompt plus every real weapon, talisman, spell, ash of war, " +
-    "spirit ash and crystal tear name, so the model picks from real items instead " +
-    "of recalling them.";
-  grounded.addEventListener("click", () => copyText(grounded, groundedPrompt));
-  const plain = el("button", null, "Copy the short prompt");
-  plain.title = "Instructions only, no item lists.";
+  const plain = el("button", null, "Copy the prompt");
+  plain.title = "The instructions. Attach the CSV alongside it.";
   plain.addEventListener("click", () => copyPrompt(plain));
-  wrap.appendChild(grounded);
+  const dl = el("button", null, "Download item data (CSV)");
+  dl.title = "Every real item in the game as one CSV — attach it to the chat so " +
+    "the model picks from real items instead of recalling them.";
+  dl.addEventListener("click", downloadItemsCsv);
   wrap.appendChild(plain);
+  wrap.appendChild(dl);
   return wrap;
 }
 // file:// pages do not always get the async clipboard, and this tracker is
