@@ -2784,6 +2784,60 @@ function locationsAgree(a, b) {
   return false;
 }
 
+// ---- weapon requirements ----
+// The weapon table carries requirements and scaling from the game's own params,
+// which makes a new check possible: whether the build's final stats can
+// actually wield the weapons it plans around. A plan that cannot is a real
+// fault, and one an LLM makes often.
+const WEAPON_ATTRS = [
+  { key: "str", req: "reqStr", scale: "scaleStr", label: "Str" },
+  { key: "dex", req: "reqDex", scale: "scaleDex", label: "Dex" },
+  { key: "int", req: "reqInt", scale: "scaleInt", label: "Int" },
+  { key: "fai", req: "reqFai", scale: "scaleFai", label: "Fai" },
+  { key: "arc", req: "reqArc", scale: "scaleArc", label: "Arc" }
+];
+
+// The last phase that names all eight stats — the build's own end state.
+function finalPhase(b) {
+  for (let i = b.phases.length - 1; i >= 0; i--) {
+    if (STAT_DEFS.every(d => b.phases[i].stats[d.key] !== undefined)) return b.phases[i];
+  }
+  return null;
+}
+
+function weaponMeta(ref) {
+  if (!ref || !ref.category) return null;
+  const reqs = WEAPON_ATTRS.map(a => ({ label: a.label, n: +ref[a.req] || 0 })).filter(r => r.n);
+  const scales = WEAPON_ATTRS.map(a => ({ label: a.label, g: ref[a.scale] }))
+    .filter(s => s.g && s.g !== "-");
+  const bits = [ref.category];
+  if (+ref.maxUpgrade === 10) bits.push("somber +10");
+  else if (+ref.maxUpgrade === 25) bits.push("+25");
+  if (reqs.length) bits.push("needs " + reqs.map(r => r.n + " " + r.label).join(", "));
+  if (scales.length) bits.push("scales " + scales.map(s => s.g + " " + s.label).join(", "));
+  if (ref.passive) bits.push(ref.passive);
+  return bits.join(" · ");
+}
+
+// Weapons the build's own final stats fall short of.
+function requirementIssues(b) {
+  const final = finalPhase(b);
+  if (!final) return [];
+  const out = [];
+  (b.equipment.weapons || []).forEach(it => {
+    const c = lookupItem("weapons", it.name);
+    if (c.status !== "ok" || !c.ref.category) return;
+    const short = WEAPON_ATTRS
+      .map(a => ({ label: a.label, need: +c.ref[a.req] || 0, has: final.stats[a.key] }))
+      .filter(r => r.need && r.has < r.need);
+    if (short.length) out.push({ name: it.name, short: short, phase: final.label || "the final phase" });
+  });
+  return out;
+}
+
+const shortfallText = iss => iss.short
+  .map(s => s.need + " " + s.label + " (plan reaches " + s.has + ")").join(", ");
+
 const equipId = (buildId, catKey, name) => buildId + "::" + catKey + "::" + name;
 
 function buildEquipStats(b) {
@@ -2906,6 +2960,11 @@ function groundedPrompt() {
     parts.push("", b.label.toUpperCase() + " (" + b.count + " rows):", b.csv);
   });
   parts.push("",
+    "In the weapon table, maxUpgrade 25 means smithing stones and 10 means",
+    "somber stones; reqStr..reqArc are the stats needed to wield it; scaleStr..",
+    "scaleArc are the scaling grades at max upgrade. Only pick weapons the",
+    "final phase's stats can actually wield.",
+    "",
     "The armor table is incomplete — it covers the common sets only. You may",
     "name armor outside it, but be careful to use real names.",
     "",
@@ -2978,6 +3037,9 @@ function correctionPrompt(b) {
   ];
   statIssues.forEach(i => parts.push("- " + i.text));
   badItems.forEach(t => parts.push("- " + t));
+  const reqIssues = requirementIssues(b);
+  reqIssues.forEach(i => parts.push('- The build plans to use "' + i.name +
+    '", which needs ' + shortfallText(i) + " at " + i.phase + "."));
 
   if (statIssues.length) {
     parts.push("",
@@ -2985,6 +3047,13 @@ function correctionPrompt(b) {
       "exactly the level plus 79, no stat may go below the starting class's",
       "value for it, and no stat may go down between phases. Level 30 totals",
       "109, level 60 totals 139, level 90 totals 169, level 120 totals 199.");
+  }
+  if (reqIssues.length) {
+    parts.push("",
+      "Every weapon must be wieldable at the final phase's stats. Either raise",
+      "the stats to meet the requirement or choose a weapon the plan can hold.",
+      "The weapon table below gives each weapon's requirements.");
+    if (!badCats.has("weapons")) badCats.set("weapons", "Weapons");
   }
   if (badCats.size) {
     parts.push("", "Replace the bad names with real ones from these lists:");
@@ -2998,7 +3067,7 @@ function correctionPrompt(b) {
 }
 
 function buildProblemCount(b) {
-  let n = validateBuild(b).filter(i => i.kind === "error").length;
+  let n = validateBuild(b).filter(i => i.kind === "error").length + requirementIssues(b).length;
   EQUIP_DEFS.forEach(d => (b.equipment[d.key] || []).forEach(it => {
     const s = lookupItem(d.key, it.name).status;
     if (s === "near" || s === "unknown") n++;
@@ -3553,6 +3622,9 @@ function renderEquipment(b) {
   }
   if (cover.children.length) card.appendChild(cover);
 
+  const finalP = finalPhase(b);
+  const finalStatsCache = finalP ? finalP.stats : null;
+
   const grid = el("div", "equip-grid");
 
   cats.forEach(d => {
@@ -3610,6 +3682,18 @@ function renderEquipment(b) {
           name.appendChild(el("span", "equip-flag", "not in the reference list"));
         }
 
+        if (chk.status === "ok" && d.key === "weapons") {
+          const meta = weaponMeta(chk.ref);
+          if (meta) name.appendChild(el("span", "equip-ref", meta));
+          const short = finalStatsCache ? WEAPON_ATTRS
+            .filter(a => (+chk.ref[a.req] || 0) > finalStatsCache[a.key])
+            .map(a => (+chk.ref[a.req]) + " " + a.label) : [];
+          if (short.length) {
+            label.classList.add("suspect");
+            name.appendChild(el("span", "equip-flag",
+              "the plan never reaches " + short.join(", ")));
+          }
+        }
         if (it.location) name.appendChild(el("span", "loc equip-meta", it.location));
         // The wiki location is shown only when the build's own does not look
         // like the same place; otherwise it just repeats what is already there.
@@ -3660,487 +3744,490 @@ document.getElementById("build-file").addEventListener("change", e => {
 // (453d2de), where they had already been corrected against the wikis.
 // ============================================================================
 const REF_CSV = {
-// Weapon names (479). No locations yet; see HANDOVER for the sourcing plan.
-weapons: `name
-Dagger
-Black Knife
-Parrying Dagger
-Miséricorde
-Reduvia
-Crystal Knife
-Celebrant's Sickle
-Glintstone Kris
-Scorpion's Stinger
-Great Knife
-Wakizashi
-Cinquedea
-Ivory Sickle
-Bloodstained Dagger
-Erdsteel Dagger
-Blade of Calling
-Main-gauche
-Fire Knight's Shortsword
-Longsword
-Short Sword
-Broadsword
-Lordsworn's Straight Sword
-Weathered Straight Sword
-Ornamental Straight Sword
-Golden Epitaph
-Coded Sword
-Sword of Night and Flame
-Crystal Sword
-Carian Knight's Sword
-Sword of St. Trina
-Miquellan Knight's Sword
-Cane Sword
-Regalia of Eochaid
-Noble's Slender Sword
-Warhawk's Talon
-Lazuli Glintstone Sword
-Rotten Crystal Sword
-Velvet Sword of St. Trina
-Stone-Sheathed Sword
-Sword of Light
-Sword of Darkness
-Inseparable Sword
-Bastard Sword
-Forked Greatsword
-Iron Greatsword
-Lordsworn's Greatsword
-Knight's Greatsword
-Flamberge
-Ordovis's Greatsword
-Alabaster Lord's Sword
-Banished Knight's Greatsword
-Dark Moon Greatsword
-Sacred Relic Sword
-Helphen's Steeple
-Blasphemous Blade
-Marais Executioner's Sword
-Sword of Milos
-Golden Order Greatsword
-Claymore
-Gargoyle's Greatsword
-Death's Poker
-Gargoyle's Blackblade
-Greatsword of Damnation
-Lizard Greatsword
-Greatsword of Solitude
-Greatsword
-Watchdog's Greatsword
-Maliketh's Black Blade
-Troll's Golden Sword
-Zweihander
-Starscourge Greatsword
-Royal Greatsword
-Godslayer's Greatsword
-Ruins Greatsword
-Grafted Blade Greatsword
-Troll Knight's Sword
-Ancient Meteoric Ore Greatsword
-Fire Knight's Greatsword
-Greatsword of Radahn (Lord)
-Moonrithyll's Knight Sword
-Greatsword of Radahn (Light)
-Nox Flowing Sword
-Falchion
-Beastman's Curved Sword
-Shotel
-Shamshir
-Bandit's Curved Sword
-Magma Blade
-Flowing Curved Sword
-Wing of Astel
-Scavenger's Curved Sword
-Eclipse Shotel
-Serpent-God's Curved Sword
-Mantis Blade
-Scimitar
-Grossmesser
-Spirit Sword
-Falx
-Dancing Blade of Ranah
-Horned Warrior's Sword
-Onyx Lord's Greatsword
-Dismounter
-Bloodhound's Fang
-Magma Wyrm's Scalesword
-Zamor Curved Sword
-Omen Cleaver
-Monk's Flameblade
-Beastman's Cleaver
-Morgott's Cursed Sword
-Freyja's Greatsword
-Horned Warrior's Greatsword
-Star-Lined Sword
-Uchigatana
-Nagakiba
-Hand of Malenia
-Meteoric Ore Blade
-Rivers of Blood
-Moonveil
-Dragonscale Blade
-Serpentbone Blade
-Sword of Night
-Twinblade
-Godskin Peeler
-Twinned Knight Swords
-Eleonora's Poleblade
-Gargoyle's Twinblade
-Gargoyle's Black Blades
-Euporia
-Black Steel Twinblade
-Carian Sorcery Sword
-Estoc
-Cleanrot Knight's Sword
-Rapier
-Rogier's Rapier
-Antspur Rapier
-Frozen Needle
-Noble's Estoc
-Sword Lance
-Bloody Helice
-Godskin Stitcher
-Great Épée
-Dragon King's Cragblade
-Queelign's Greatsword
-Battle Axe
-Forked Hatchet
-Hand Axe
-Jawbone Axe
-Iron Cleaver
-Ripple Blade
-Celebrant's Cleaver
-Icerind Hatchet
-Highland Axe
-Sacrificial Axe
-Rosus' Axe
-Stormhawk Axe
-Smithscript Axe
-Death Knight's Twin Axes
-Messmer Soldier's Axe
-Forked-Tongue Hatchet
-Warped Axe
-Putrescence Cleaver
-Greataxe
-Great Omenkiller Cleaver
-Crescent Moon Axe
-Axe of Godrick
-Longhaft Axe
-Rusted Anchor
-Executioner's Greataxe
-Winged Greathorn
-Butchering Knife
-Gargoyle's Great Axe
-Gargoyle's Black Axe
-Death Knight's Longhaft Axe
-Bonny Butchering Knife
-Mace
-Club
-Curved Club
-Warpick
-Morning Star
-Varré's Bouquet
-Spiked Club
-Hammer
-Monk's Flamemace
-Envoy's Horn
-Scepter of the All-Knowing
-Nox Flowing Hammer
-Ringed Finger
-Stone Club
-Marika's Hammer
-Flowerstone Gavel
-Large Club
-Greathorn Hammer
-Battle Hammer
-Great Mace
-Curved Great Club
-Celebrant's Skull
-Pickaxe
-Beastclaw Greathammer
-Envoy's Long Horn
-Cranial Vessel Candlestand
-Great Stars
-Brick Hammer
-Devourer's Scepter
-Rotten Battle Hammer
-Smithscript Greathammer
-Black Steel Greathammer
-Nightrider Flail
-Flail
-Family Heads
-Bastard's Stars
-Chainlink Flail
-Serpent Flail
-Short Spear
-Spear
-Crystal Spear
-Clayman's Harpoon
-Cleanrot Spear
-Partisan
-Celebrant's Rib-Rake
-Pike
-Torchpole
-Bolt of Gransax
-Cross-Naginata
-Death Ritual Spear
-Inquisitor's Girandole
-Spiked Spear
-Iron Spear
-Rotten Crystal Spear
-Smithscript Spear
-Swift Spear
-Bloodfiend's Fork
-Bloodfiend's Sacred Spear
-Mohgwyn's Sacred Spear
-Siluria's Tree
-Serpent-Hunter
-Vyke's War Spear
-Lance
-Treespear
-Spear of the Impaler
-Messmer Soldier's Spear
-Barbed Staff-Spear
-Halberd
-Pest's Glaive
-Lucerne
-Banished Knight's Halberd
-Commander's Standard
-Nightrider Glaive
-Ripple Crescent Halberd
-Vulgar Militia Saw
-Golden Halberd
-Glaive
-Loretta's War Sickle
-Guardian's Swordspear
-Vulgar Militia Shotel
-Dragon Halberd
-Gargoyle's Halberd
-Gargoyle's Black Halberd
-Spirit Glaive
-Poleblade of the Bud
-Scythe
-Grave Scythe
-Halo Scythe
-Winged Scythe
-Obsidian Lamina
-Caestus
-Spiked Caestus
-Grafted Dragon
-Iron Ball
-Star Fist
-Katar
-Clinging Bone
-Veteran's Prosthesis
-Cipher Pata
-Thiollier's Hidden Needle
-Pata
-Poisoned Hand
-Madding Hand
-Golem Fist
-Hookclaws
-Venomous Fang
-Bloodhound Claws
-Raptor Talons
-Claws of Night
-Whip
-Thorned Whip
-Magma Whip Candlestick
-Hoslow's Petal Whip
-Giant's Red Braid
-Urumi
-Tooth Whip
-Anvil Hammer
-Bloodfiend's Arm
-Prelate's Inferno Crozier
-Watchdog's Staff
-Great Club
-Envoy's Greathorn
-Duelist Greataxe
-Axe of Godfrey
-Dragon Greatclaw
-Staff of the Avatar
-Fallingstar Beast Jaw
-Ghiza's Wheel
-Giant-Crusher
-Golem's Halberd
-Troll's Hammer
-Rotten Staff
-Rotten Greataxe
-Devonia's Hammer
-Shadow Sunflower Blossom
-Gazing Finger
-Shortbow
-Misbegotten Shortbow
-Red Branch Shortbow
-Harp Bow
-Composite Bow
-Bone Bow
-Longbow
-Albinauric Bow
-Horn Bow
-Erdtree Bow
-Serpent Bow
-Pulley Bow
-Black Bow
-Ansbach's Longbow
-Lion Greatbow
-Golem Greatbow
-Erdtree Greatbow
-Greatbow
-Igon's Greatbow
-Soldier's Crossbow
-Light Crossbow
-Heavy Crossbow
-Pulley Crossbow
-Full Moon Crossbow
-Arbalest
-Crepus's Black-Key Crossbow
-Repeating Crossbow
-Spread Crossbow
-Hand Ballista
-Jar Cannon
-Rabbath's Cannon
-Glintstone Staff
-Crystal Staff
-Gelmir Glintstone Staff
-Demi-Human Queen's Staff
-Carian Regal Scepter
-Digger's Staff
-Astrologer's Staff
-Carian Glintblade Staff
-Prince of Death's Staff
-Albinauric Staff
-Academy Glintstone Staff
-Carian Glintstone Staff
-Azur's Glintstone Staff
-Lusat's Glintstone Staff
-Meteorite Staff
-Staff of the Guilty
-Rotten Crystal Staff
-Staff of Loss
-Staff of the Great Beyond
-Maternal Staff
-Finger Seal
-Godslayer's Seal
-Giant's Seal
-Gravel Stone Seal
-Clawmark Seal
-Golden Order Seal
-Erdtree Seal
-Dragon Communion Seal
-Frenzied Flame Seal
-Dryleaf Seal
-Fire Knight's Seal
-Spiraltree Seal
-Shield of Night
-Buckler
-Perfumer's Shield
-Man-Serpent's Shield
-Rickety Shield
-Pillory Shield
-Red Thorn Roundshield
-Scripture Wooden Shield
-Riveted Wooden Shield
-Blue-White Wooden Shield
-Rift Shield
-Iron Roundshield
-Gilded Iron Shield
-Ice Crest Shield
-Smoldering Shield
-Spiralhorn Shield
-Coil Shield
-Smithscript Shield
-Shield of the Guilty
-Beastman's Jar-Shield
-Kite Shield
-Marred Leather Shield
-Marred Wooden Shield
-Banished Knight's Shield
-Albinauric Shield
-Sun Realm Shield
-Silver Mirrorshield
-Round Shield
-Scorpion Kite Shield
-Twinbird Kite Shield
-Blue-Gold Kite Shield
-Brass Shield
-Great Turtle Shell
-Carian Knight's Shield
-Large Leather Shield
-Horse Crest Wooden Shield
-Candletree Wooden Shield
-Flame Crest Wooden Shield
-Hawk Crest Wooden Shield
-Beast Crest Heater Shield
-Red Crest Heater Shield
-Blue Crest Heater Shield
-Eclipse Crest Heater Shield
-Inverted Hawk Heater Shield
-Heater Shield
-Black Leather Shield
-Messmer Soldier Shield
-Wolf Crest Shield
-Serpent Crest Shield
-Golden Lion Shield
-Dragon Towershield
-Distinguished Greatshield
-Crucible Hornshield
-Dragonclaw Shield
-Briar Greatshield
-Erdtree Greatshield
-Golden Beast Crest Shield
-Jellyfish Shield
-Fingerprint Stone Shield
-Icon Shield
-One-Eyed Shield
-Visage Shield
-Spiked Palisade Shield
-Manor Towershield
-Crossed-Tree Towershield
-Inverted Hawk Towershield
-Ant's Skull Plate
-Redmane Greatshield
-Eclipse Crest Greatshield
-Cuckoo Greatshield
-Golden Greatshield
-Gilded Greatshield
-Haligtree Crest Greatshield
-Wooden Greatshield
-Lordsworn's Shield
-Black Steel Greatshield
-Verdigris Greatshield
-Torch
-Steel-Wire Torch
-St. Trina's Torch
-Ghostflame Torch
-Beast-Repellent Torch
-Sentry's Torch
-Nanaya's Torch
-Lamenting Visage
-Dryleaf Arts
-Dane's Footwork
-Firespark Perfume Bottle
-Chilling Perfume Bottle
-Frenzyflame Perfume Bottle
-Lightning Perfume Bottle
-Deadly Poison Perfume Bottle
-Dueling Shield
-Carian Thrusting Shield
-Smithscript Dagger
-Backhand Blade
-Smithscript Cirque
-Curseblade's Cirque
-Milady
-Leda's Sword
-Rellana's Twin Blades
-Great Katana
-Dragon-Hunter's Great Katana
-Rakshasa's Great Katana
-Beast Claw
-Red Bear's Claw`,
+// Weapons (479), from the game's own EquipParamWeapon at patch 1.14.
+// maxUpgrade 25 means smithing stones, 10 means somber. Scaling letters are
+// at max upgrade, standard affinity, using the game's own tier thresholds.
+// passive is the base status buildup where the weapon has one.
+weapons: `name,category,maxUpgrade,reqStr,reqDex,reqInt,reqFai,reqArc,scaleStr,scaleDex,scaleInt,scaleFai,scaleArc,passive
+Battle Axe,Axe,25,12,8,0,0,0,C,D,-,-,-,
+Celebrant's Cleaver,Axe,25,12,8,0,0,0,C,D,-,-,-,
+Death Knight's Twin Axes,Axe,10,14,12,0,16,0,C,D,-,C,-,
+Forked Hatchet,Axe,25,9,14,0,0,0,D,C,-,-,-,Bleed 50
+Forked-Tongue Hatchet,Axe,25,10,13,0,0,0,D,C,-,-,-,Bleed 50
+Hand Axe,Axe,25,9,8,0,0,0,D,C,-,-,-,
+Highland Axe,Axe,25,12,9,0,0,0,C,D,-,-,-,
+Icerind Hatchet,Axe,10,11,16,0,0,0,D,B,-,-,-,Frost 65
+Iron Cleaver,Axe,25,15,7,0,0,0,B,D,-,-,-,
+Jawbone Axe,Axe,25,14,8,0,0,0,C,D,-,-,-,
+Messmer Soldier's Axe,Axe,25,14,10,0,0,0,C,C,-,-,-,
+Ripple Blade,Axe,25,11,11,0,0,20,-,-,-,-,S,
+Rosus' Axe,Axe,10,18,10,18,0,0,B,D,C,-,-,
+Sacrificial Axe,Axe,25,16,10,0,0,0,C,D,-,-,-,
+Smithscript Axe,Axe,25,13,10,11,11,0,C,D,E,E,-,
+Stormhawk Axe,Axe,10,19,15,0,0,0,C,C,-,-,-,
+Warped Axe,Axe,25,24,8,0,0,0,B,-,-,-,-,
+Backhand Blade,Backhand Blade,25,10,13,0,0,0,C,C,-,-,-,
+Curseblade's Cirque,Backhand Blade,10,9,22,0,0,0,D,B,-,-,-,Bleed 45
+Smithscript Cirque,Backhand Blade,25,9,14,11,11,0,D,C,E,E,-,
+Hand Ballista,Ballista,25,30,14,0,0,0,-,-,-,-,-,
+Jar Cannon,Ballista,10,34,12,0,0,0,-,-,-,-,-,
+Rabbath's Cannon,Ballista,10,28,16,0,0,0,-,-,-,-,-,
+Beast Claw,Beast Claw,25,13,11,0,0,0,C,D,-,-,-,Bleed 45
+Red Bear's Claw,Beast Claw,10,20,10,0,0,0,B,D,-,-,-,Bleed 45
+Albinauric Bow,Bow,25,7,18,0,0,0,E,D,-,-,-,
+Ansbach's Longbow,Bow,10,9,43,0,0,0,D,D,-,-,-,
+Black Bow,Bow,10,9,20,0,0,0,D,D,-,-,-,
+Erdtree Bow,Bow,10,8,12,0,14,0,E,D,-,D,-,
+Horn Bow,Bow,25,10,14,12,0,0,D,D,E,-,-,
+Longbow,Bow,25,9,14,0,0,0,D,D,-,-,-,
+Pulley Bow,Bow,10,11,11,0,0,0,D,D,-,-,-,
+Serpent Bow,Bow,10,8,15,0,0,11,D,D,-,-,D,
+Bloodhound Claws,Claw,25,10,15,0,0,0,C,D,-,-,-,Bleed 60
+Claws of Night,Claw,10,8,20,0,0,0,-,B,-,-,-,Bleed 45
+Hookclaws,Claw,25,8,14,0,0,0,D,C,-,-,-,Bleed 60
+Raptor Talons,Claw,25,6,14,0,0,0,E,B,-,-,-,Bleed 60
+Venomous Fang,Claw,25,9,9,0,0,0,D,C,-,-,-,Poison 72
+Ancient Meteoric Ore Greatsword,Colossal Sword,10,35,10,0,0,19,B,E,-,-,D,
+Fire Knight's Greatsword,Colossal Sword,25,22,18,0,12,0,D,C,-,D,-,
+Godslayer's Greatsword,Colossal Sword,10,20,22,0,20,0,D,B,-,C,-,
+Grafted Blade Greatsword,Colossal Sword,10,40,14,0,0,0,B,D,-,-,-,
+Greatsword,Colossal Sword,25,31,12,0,0,0,B,D,-,-,-,
+Greatsword of Radahn (Light),Colossal Sword,10,32,24,15,0,0,C,C,D,-,-,
+Greatsword of Radahn (Lord),Colossal Sword,10,32,24,15,0,0,C,C,D,-,-,
+Maliketh's Black Blade,Colossal Sword,10,34,12,0,20,0,B,D,-,B,-,
+Moonrithyll's Knight Sword,Colossal Sword,10,20,14,18,0,0,C,C,D,-,-,
+Royal Greatsword,Colossal Sword,10,26,18,22,0,0,C,D,C,-,-,
+Ruins Greatsword,Colossal Sword,10,50,0,16,0,0,S,-,D,-,-,
+Starscourge Greatsword,Colossal Sword,10,38,12,15,0,0,B,D,D,-,-,
+Troll Knight's Sword,Colossal Sword,10,20,14,18,0,0,C,C,D,-,-,
+Troll's Golden Sword,Colossal Sword,25,29,10,0,0,0,C,D,-,-,-,
+Watchdog's Greatsword,Colossal Sword,25,30,10,0,0,0,B,E,-,-,-,
+Zweihander,Colossal Sword,25,19,11,0,0,0,D,C,-,-,-,
+Anvil Hammer,Colossal Weapon,10,39,10,11,20,0,B,E,E,D,-,
+Axe of Godfrey,Colossal Weapon,10,42,14,0,0,0,C,D,-,-,-,
+Bloodfiend's Arm,Colossal Weapon,25,28,11,0,0,16,C,E,-,-,C,
+Devonia's Hammer,Colossal Weapon,10,30,13,0,19,0,B,D,-,C,-,
+Dragon Greatclaw,Colossal Weapon,10,30,14,0,0,0,C,C,-,-,-,
+Duelist Greataxe,Colossal Weapon,25,30,10,0,0,0,D,C,-,-,-,
+Envoy's Greathorn,Colossal Weapon,10,28,12,0,24,0,C,C,-,D,-,
+Fallingstar Beast Jaw,Colossal Weapon,10,34,12,20,0,0,C,C,D,-,-,
+Gazing Finger,Colossal Weapon,10,20,8,20,14,0,B,-,D,E,-,
+Ghiza's Wheel,Colossal Weapon,10,28,18,0,0,0,C,C,-,-,-,Bleed 70
+Giant-Crusher,Colossal Weapon,25,60,0,0,0,0,B,-,-,-,-,
+Golem's Halberd,Colossal Weapon,25,36,14,0,0,0,C,D,-,-,-,
+Great Club,Colossal Weapon,25,35,0,0,0,0,B,-,-,D,-,
+Prelate's Inferno Crozier,Colossal Weapon,25,45,8,0,0,0,B,E,-,-,-,
+Rotten Greataxe,Colossal Weapon,25,30,10,0,0,0,D,C,-,-,-,Scarlet Rot 65
+Rotten Staff,Colossal Weapon,10,34,8,0,0,0,B,D,-,-,-,Scarlet Rot 75
+Shadow Sunflower Blossom,Colossal Weapon,10,24,8,0,25,0,C,E,-,B,-,
+Staff of the Avatar,Colossal Weapon,10,34,8,0,24,0,A,D,-,B,-,
+Troll's Hammer,Colossal Weapon,25,28,8,0,10,0,B,E,-,D,-,
+Watchdog's Staff,Colossal Weapon,10,34,10,0,0,0,C,D,-,-,-,
+Arbalest,Crossbow,25,18,12,0,0,0,-,-,-,-,-,
+Crepus's Black-Key Crossbow,Crossbow,10,14,16,0,0,0,-,-,-,-,-,
+Full Moon Crossbow,Crossbow,10,10,10,14,0,0,-,-,-,-,-,
+Heavy Crossbow,Crossbow,25,14,10,0,0,0,-,-,-,-,-,
+Light Crossbow,Crossbow,25,12,8,0,0,0,-,-,-,-,-,
+Pulley Crossbow,Crossbow,10,16,16,0,0,0,-,-,-,-,-,
+Repeating Crossbow,Crossbow,10,13,15,0,0,0,-,-,-,-,-,
+Soldier's Crossbow,Crossbow,25,10,8,0,0,0,-,-,-,-,-,
+Spread Crossbow,Crossbow,25,11,17,0,0,0,-,-,-,-,-,
+Beastman's Cleaver,Curved Greatsword,25,25,14,0,0,0,B,-,-,-,-,
+Bloodhound's Fang,Curved Greatsword,10,18,17,0,0,0,C,B,-,-,-,Bleed 55
+Dismounter,Curved Greatsword,25,19,16,0,0,0,C,D,-,-,-,
+Freyja's Greatsword,Curved Greatsword,25,25,14,0,0,0,C,E,-,-,-,
+Horned Warrior's Greatsword,Curved Greatsword,10,19,16,0,13,0,B,D,-,D,-,
+Magma Wyrm's Scalesword,Curved Greatsword,10,24,15,0,18,0,B,D,-,B,-,
+Monk's Flameblade,Curved Greatsword,25,18,18,0,0,0,D,C,-,-,-,
+Morgott's Cursed Sword,Curved Greatsword,10,14,35,0,0,17,D,B,-,-,D,Bleed 60
+Omen Cleaver,Curved Greatsword,25,19,16,0,0,0,C,C,-,-,-,
+Onyx Lord's Greatsword,Curved Greatsword,10,20,16,16,0,0,B,E,B,-,-,
+Zamor Curved Sword,Curved Greatsword,10,16,18,0,0,0,C,B,-,-,-,Frost 65
+Bandit's Curved Sword,Curved Sword,25,11,13,0,0,0,D,C,-,-,-,
+Beastman's Curved Sword,Curved Sword,25,13,11,0,0,0,B,D,-,-,-,
+Dancing Blade of Ranah,Curved Sword,10,9,20,0,0,0,-,A,-,-,-,
+Eclipse Shotel,Curved Sword,10,10,25,0,30,0,D,C,-,C,-,
+Falchion,Curved Sword,25,9,13,0,0,0,C,C,-,-,-,
+Falx,Curved Sword,10,12,15,0,0,0,D,B,-,-,-,Bleed 55
+Flowing Curved Sword,Curved Sword,25,9,17,0,0,0,D,C,-,-,-,
+Grossmesser,Curved Sword,25,14,12,0,0,0,C,D,-,-,-,
+Horned Warrior's Sword,Curved Sword,10,11,14,0,14,0,D,C,-,D,-,
+Magma Blade,Curved Sword,10,9,15,0,16,0,C,D,-,C,-,
+Mantis Blade,Curved Sword,25,10,12,0,0,0,D,C,-,-,-,
+Nox Flowing Sword,Curved Sword,10,8,15,0,0,0,D,B,-,-,-,
+Scavenger's Curved Sword,Curved Sword,25,9,14,0,0,0,C,C,-,-,-,Bleed 45
+Scimitar,Curved Sword,25,7,13,0,0,0,D,C,-,-,-,
+Serpent-God's Curved Sword,Curved Sword,25,13,9,0,0,0,C,D,-,-,-,
+Shamshir,Curved Sword,25,7,13,0,0,0,D,C,-,-,-,
+Shotel,Curved Sword,25,9,19,0,0,0,D,C,-,-,-,
+Spirit Sword,Curved Sword,10,8,16,16,0,0,E,C,C,-,-,
+Wing of Astel,Curved Sword,10,7,17,20,0,0,E,C,B,-,-,
+Black Knife,Dagger,10,8,12,0,18,0,E,B,-,C,-,
+Blade of Calling,Dagger,10,6,13,0,15,0,D,C,-,B,-,
+Bloodstained Dagger,Dagger,25,9,12,0,0,0,B,D,-,-,-,Bleed 38
+Celebrant's Sickle,Dagger,25,6,11,0,0,0,E,B,-,-,-,
+Cinquedea,Dagger,10,10,10,0,0,0,B,D,-,-,-,
+Crystal Knife,Dagger,25,8,12,9,0,0,C,D,B,-,-,
+Dagger,Dagger,25,5,9,0,0,0,D,B,-,-,-,
+Erdsteel Dagger,Dagger,25,7,12,0,14,0,D,D,-,D,-,
+Fire Knight's Shortsword,Dagger,25,8,13,0,12,0,D,C,-,D,-,
+Glintstone Kris,Dagger,10,5,12,16,0,0,E,C,C,-,-,
+Great Knife,Dagger,25,6,12,0,0,0,E,B,-,-,-,Bleed 38
+Ivory Sickle,Dagger,25,6,11,13,0,0,D,C,C,-,-,
+Main-gauche,Dagger,25,7,15,0,0,0,D,C,-,-,-,
+Miséricorde,Dagger,25,7,12,0,0,0,E,C,-,-,-,
+Parrying Dagger,Dagger,25,5,14,0,0,0,E,B,-,-,-,
+Reduvia,Dagger,10,5,13,0,0,13,E,C,-,-,B,Bleed 50
+Scorpion's Stinger,Dagger,10,6,12,0,0,0,D,B,-,-,-,Scarlet Rot 50
+Wakizashi,Dagger,25,9,13,0,0,0,D,C,-,-,-,Bleed 38
+Caestus,Fist,25,8,8,0,0,0,C,C,-,-,-,
+Cipher Pata,Fist,10,0,0,0,30,0,-,-,-,A,-,
+Clinging Bone,Fist,10,8,22,0,0,16,E,B,-,-,C,
+Golem Fist,Fist,25,24,8,11,11,0,C,E,E,E,-,
+Grafted Dragon,Fist,10,20,14,0,16,0,C,D,-,D,-,
+Iron Ball,Fist,25,11,8,0,0,0,C,D,-,-,-,
+Katar,Fist,25,8,10,0,0,0,D,C,-,-,-,
+Madding Hand,Fist,10,8,8,13,20,0,D,D,D,D,-,Madness 55
+Pata,Fist,25,11,15,0,0,0,D,C,-,-,-,
+Poisoned Hand,Fist,10,8,8,0,0,28,E,-,-,-,A,Poison 60
+Spiked Caestus,Fist,25,8,10,0,0,0,C,C,-,-,-,Bleed 45
+Star Fist,Fist,25,12,8,0,0,0,C,D,-,-,-,Bleed 45
+Thiollier's Hidden Needle,Fist,10,10,22,15,0,0,D,B,C,-,-,Sleep 42
+Veteran's Prosthesis,Fist,10,15,12,0,0,0,C,D,-,-,-,
+Bastard's Stars,Flail,10,8,22,22,0,0,E,C,A,-,-,
+Chainlink Flail,Flail,25,18,12,0,0,0,B,E,-,-,-,Bleed 50
+Family Heads,Flail,10,8,18,16,0,0,D,A,D,-,-,
+Flail,Flail,25,10,18,0,0,0,D,C,-,-,-,Bleed 50
+Nightrider Flail,Flail,25,10,24,0,0,0,D,B,-,-,-,Bleed 50
+Serpent Flail,Flail,10,10,24,0,21,0,E,C,-,B,-,
+Academy Glintstone Staff,Glintstone Staff,25,6,0,28,0,0,D,-,S,-,-,
+Albinauric Staff,Glintstone Staff,25,6,0,10,0,12,D,-,C,-,S,
+Astrologer's Staff,Glintstone Staff,25,7,0,16,0,0,D,-,S,-,-,
+Azur's Glintstone Staff,Glintstone Staff,10,10,0,52,0,0,C,-,S,-,-,
+Carian Glintblade Staff,Glintstone Staff,25,6,12,22,0,0,D,D,S,-,-,
+Carian Glintstone Staff,Glintstone Staff,25,6,8,24,0,0,D,-,S,-,-,
+Carian Regal Scepter,Glintstone Staff,10,8,10,60,0,0,D,D,S,-,-,
+Crystal Staff,Glintstone Staff,10,8,0,48,0,0,C,-,S,-,-,
+Demi-Human Queen's Staff,Glintstone Staff,25,6,0,10,0,0,C,-,S,-,-,
+Digger's Staff,Glintstone Staff,25,8,0,12,0,0,C,-,S,-,-,
+Gelmir Glintstone Staff,Glintstone Staff,25,6,0,14,14,0,D,-,B,B,-,
+Glintstone Staff,Glintstone Staff,25,6,0,10,0,0,D,-,S,-,-,
+Lusat's Glintstone Staff,Glintstone Staff,10,10,0,52,0,0,C,-,S,-,-,
+Maternal Staff,Glintstone Staff,25,7,0,21,0,21,D,-,A,-,A,
+Meteorite Staff,Glintstone Staff,0,6,0,18,0,0,D,-,S,-,-,
+Prince of Death's Staff,Glintstone Staff,25,6,0,18,18,0,D,-,A,A,-,
+Rotten Crystal Staff,Glintstone Staff,10,8,0,48,0,0,C,-,S,-,-,Scarlet Rot 50
+Staff of Loss,Glintstone Staff,25,6,12,14,0,0,D,D,S,-,-,
+Staff of the Great Beyond,Glintstone Staff,10,7,0,25,25,0,D,-,B,B,-,
+Staff of the Guilty,Glintstone Staff,25,8,0,0,12,0,C,-,-,S,-,Bleed 45
+Battle Hammer,Great Hammer,25,26,8,0,0,0,B,E,-,-,-,
+Beastclaw Greathammer,Great Hammer,10,20,10,0,18,0,C,C,-,D,-,
+Black Steel Greathammer,Great Hammer,25,25,11,0,17,0,B,E,-,C,-,
+Brick Hammer,Great Hammer,25,31,0,0,0,0,A,-,-,-,-,
+Celebrant's Skull,Great Hammer,25,18,12,0,0,0,C,C,-,-,-,
+Cranial Vessel Candlestand,Great Hammer,10,26,8,0,22,0,B,D,-,B,-,
+Curved Great Club,Great Hammer,25,24,10,0,0,0,C,D,-,-,-,
+Devourer's Scepter,Great Hammer,10,24,20,0,25,0,C,C,-,C,-,
+Envoy's Long Horn,Great Hammer,10,23,11,0,18,0,C,D,-,B,-,
+Great Mace,Great Hammer,25,28,0,0,0,0,B,-,-,-,-,
+Great Stars,Great Hammer,25,22,12,0,0,0,C,D,-,-,-,Bleed 55
+Greathorn Hammer,Great Hammer,25,22,10,0,0,0,C,D,-,-,-,
+Large Club,Great Hammer,25,22,0,0,0,0,B,-,-,-,-,
+Pickaxe,Great Hammer,25,22,10,0,0,0,C,D,-,-,-,
+Rotten Battle Hammer,Great Hammer,25,26,8,0,0,0,B,E,-,-,-,Scarlet Rot 65
+Smithscript Greathammer,Great Hammer,25,20,10,11,11,0,C,E,E,E,-,
+Dragon-Hunter's Great Katana,Great Katana,10,15,20,0,0,0,C,C,-,-,-,Bleed 55
+Great Katana,Great Katana,25,14,18,0,0,0,D,C,-,-,-,Bleed 55
+Rakshasa's Great Katana,Great Katana,10,12,27,0,0,0,D,B,-,-,-,Bleed 55
+Barbed Staff-Spear,Great Spear,10,14,18,0,22,0,D,D,-,A,-,Bleed 55
+Bloodfiend's Sacred Spear,Great Spear,10,22,12,0,0,13,D,E,-,-,B,Bleed 55
+Lance,Great Spear,25,20,14,0,0,0,C,C,-,-,-,
+Messmer Soldier's Spear,Great Spear,25,19,16,0,0,0,C,C,-,-,-,
+Mohgwyn's Sacred Spear,Great Spear,10,24,14,0,0,27,C,D,-,-,C,Bleed 55
+Serpent-Hunter,Great Spear,10,0,0,0,0,0,A,E,-,-,-,
+Siluria's Tree,Great Spear,10,27,13,0,20,0,B,D,-,C,-,
+Spear of the Impaler,Great Spear,10,14,35,0,18,0,E,B,-,C,-,
+Treespear,Great Spear,25,15,22,0,18,0,D,C,-,D,-,
+Vyke's War Spear,Great Spear,10,16,20,0,18,0,D,B,-,C,-,Madness 65
+Axe of Godrick,Greataxe,10,34,22,0,0,0,C,C,-,-,-,
+Bonny Butchering Knife,Greataxe,10,16,20,0,0,0,B,D,-,-,-,
+Butchering Knife,Greataxe,25,16,20,0,0,0,E,B,-,-,-,
+Crescent Moon Axe,Greataxe,25,25,15,0,0,0,D,C,-,-,-,
+Death Knight's Longhaft Axe,Greataxe,10,23,10,0,18,0,B,E,-,D,-,
+Executioner's Greataxe,Greataxe,25,34,8,0,0,0,B,E,-,-,-,
+Gargoyle's Black Axe,Greataxe,10,24,8,0,22,0,C,E,-,D,-,
+Gargoyle's Great Axe,Greataxe,25,24,8,0,0,0,B,E,-,-,-,
+Great Omenkiller Cleaver,Greataxe,25,23,12,0,0,0,C,D,-,-,-,Bleed 55
+Greataxe,Greataxe,25,30,8,0,0,0,C,D,-,-,-,
+Longhaft Axe,Greataxe,25,24,8,0,0,0,C,D,-,-,-,
+Putrescence Cleaver,Greataxe,10,28,10,0,0,15,C,E,-,-,C,Frost 55
+Rusted Anchor,Greataxe,25,26,9,0,0,0,B,E,-,-,-,
+Winged Greathorn,Greataxe,10,30,20,0,0,0,B,B,-,-,-,
+Erdtree Greatbow,Greatbow,10,20,14,0,14,0,D,D,-,D,-,
+Golem Greatbow,Greatbow,10,24,18,0,0,0,C,D,-,-,-,
+Greatbow,Greatbow,25,20,20,0,0,0,D,D,-,-,-,
+Igon's Greatbow,Greatbow,25,23,16,0,0,0,C,E,-,-,-,
+Lion Greatbow,Greatbow,10,22,18,0,0,0,D,D,-,-,-,
+Ant's Skull Plate,Greatshield,10,28,0,0,0,0,B,-,-,-,-,Poison 90
+Black Steel Greatshield,Greatshield,25,35,0,0,0,0,B,-,-,-,-,
+Briar Greatshield,Greatshield,25,21,0,0,0,0,B,-,-,-,-,Bleed 70
+Crossed-Tree Towershield,Greatshield,25,30,0,0,0,0,B,-,-,-,-,
+Crucible Hornshield,Greatshield,10,26,0,0,0,0,B,-,-,-,-,
+Cuckoo Greatshield,Greatshield,25,32,0,0,0,0,B,-,-,-,-,
+Distinguished Greatshield,Greatshield,25,32,0,0,0,0,B,-,-,-,-,
+Dragon Towershield,Greatshield,25,30,0,0,0,0,B,-,-,-,-,
+Dragonclaw Shield,Greatshield,10,28,12,0,0,0,C,D,-,-,-,
+Eclipse Crest Greatshield,Greatshield,25,32,0,0,0,0,B,-,-,-,-,
+Erdtree Greatshield,Greatshield,10,30,0,0,12,0,B,-,-,D,-,
+Fingerprint Stone Shield,Greatshield,25,48,0,0,0,0,B,-,-,-,-,Madness 70
+Gilded Greatshield,Greatshield,25,36,0,0,0,0,B,-,-,-,-,
+Golden Beast Crest Shield,Greatshield,25,24,0,0,0,0,B,-,-,-,-,
+Golden Greatshield,Greatshield,25,34,0,0,0,0,B,-,-,-,-,
+Haligtree Crest Greatshield,Greatshield,25,36,0,0,0,0,B,-,-,-,-,
+Icon Shield,Greatshield,10,22,0,0,0,0,B,-,-,-,-,
+Inverted Hawk Towershield,Greatshield,25,30,0,0,0,0,B,-,-,-,-,
+Jellyfish Shield,Greatshield,10,20,14,0,0,0,B,-,-,-,-,
+Lordsworn's Shield,Greatshield,25,16,0,0,0,0,B,-,-,-,-,
+Manor Towershield,Greatshield,25,30,0,0,0,0,B,-,-,-,-,
+One-Eyed Shield,Greatshield,10,36,0,0,0,0,B,-,-,-,-,
+Redmane Greatshield,Greatshield,25,30,0,0,0,0,B,-,-,-,-,
+Spiked Palisade Shield,Greatshield,25,20,0,0,0,0,B,-,-,-,-,Bleed 70
+Verdigris Greatshield,Greatshield,10,49,0,0,0,0,B,-,-,-,-,
+Visage Shield,Greatshield,10,44,0,0,0,0,B,-,-,-,-,
+Wooden Greatshield,Greatshield,25,14,0,0,0,0,B,-,-,-,-,
+Alabaster Lord's Sword,Greatsword,10,16,12,18,0,0,B,D,D,-,-,
+Banished Knight's Greatsword,Greatsword,25,17,9,0,0,0,C,D,-,-,-,
+Bastard Sword,Greatsword,25,16,10,0,0,0,C,D,-,-,-,
+Blasphemous Blade,Greatsword,10,22,15,0,21,0,C,C,-,B,-,
+Claymore,Greatsword,25,16,13,0,0,0,C,D,-,-,-,
+Dark Moon Greatsword,Greatsword,10,16,11,38,0,0,D,D,B,-,-,Frost 55
+Death's Poker,Greatsword,10,15,17,11,0,0,C,B,D,-,-,Frost 65
+Flamberge,Greatsword,25,15,14,0,0,0,D,C,-,-,-,Bleed 55
+Forked Greatsword,Greatsword,25,14,16,0,0,0,D,C,-,-,-,Bleed 55
+Gargoyle's Blackblade,Greatsword,10,18,10,0,22,0,C,D,-,D,-,
+Gargoyle's Greatsword,Greatsword,25,18,10,0,0,0,B,E,-,-,-,
+Golden Order Greatsword,Greatsword,10,16,21,0,28,0,E,D,-,B,-,
+Greatsword of Damnation,Greatsword,10,20,15,0,20,0,C,D,-,D,-,
+Greatsword of Solitude,Greatsword,10,27,13,0,0,0,A,D,-,-,-,
+Helphen's Steeple,Greatsword,10,19,10,22,0,0,C,E,B,-,-,
+Inseparable Sword,Greatsword,10,18,18,0,20,0,D,D,-,B,-,
+Iron Greatsword,Greatsword,25,18,10,0,0,0,B,E,-,-,-,
+Knight's Greatsword,Greatsword,25,16,12,0,0,0,D,C,-,-,-,
+Lizard Greatsword,Greatsword,25,12,14,0,0,0,D,C,-,-,-,
+Lordsworn's Greatsword,Greatsword,25,16,10,0,0,0,C,D,-,-,-,
+Marais Executioner's Sword,Greatsword,10,24,14,0,0,23,B,E,-,-,D,
+Ordovis's Greatsword,Greatsword,10,25,13,0,15,0,A,E,-,C,-,
+Sacred Relic Sword,Greatsword,10,14,24,0,22,0,D,B,-,C,-,
+Sword of Milos,Greatsword,10,15,19,0,0,0,C,C,-,-,-,Bleed 55
+Banished Knight's Halberd,Halberd,25,14,12,0,0,0,C,C,-,-,-,
+Commander's Standard,Halberd,10,24,14,0,0,0,B,D,-,-,-,
+Dragon Halberd,Halberd,10,22,10,0,0,0,B,C,-,-,-,
+Gargoyle's Black Halberd,Halberd,10,26,10,0,22,0,C,D,-,D,-,
+Gargoyle's Halberd,Halberd,25,26,10,0,0,0,B,E,-,-,-,
+Glaive,Halberd,25,18,15,0,0,0,C,C,-,-,-,
+Golden Halberd,Halberd,10,30,14,0,12,0,B,D,-,D,-,
+Guardian's Swordspear,Halberd,25,17,16,0,0,0,E,B,-,-,-,
+Halberd,Halberd,25,14,12,0,0,0,C,D,-,-,-,
+Loretta's War Sickle,Halberd,10,20,15,20,0,0,C,C,C,-,-,
+Lucerne,Halberd,25,15,12,0,0,0,D,C,-,-,-,
+Nightrider Glaive,Halberd,25,26,10,0,0,0,B,E,-,-,-,
+Pest's Glaive,Halberd,25,13,13,0,0,0,D,C,-,-,-,
+Poleblade of the Bud,Halberd,10,14,22,0,0,20,E,D,-,-,B,Scarlet Rot 55
+Ripple Crescent Halberd,Halberd,25,12,12,0,0,20,-,-,-,-,S,
+Spirit Glaive,Halberd,10,14,17,16,0,0,D,C,D,-,-,
+Vulgar Militia Saw,Halberd,25,15,13,0,0,0,D,C,-,-,-,Bleed 55
+Vulgar Militia Shotel,Halberd,25,14,16,0,0,0,E,B,-,-,-,
+Club,Hammer,25,10,0,0,0,0,B,-,-,-,-,
+Curved Club,Hammer,25,11,7,0,0,0,B,D,-,-,-,
+Envoy's Horn,Hammer,10,10,12,0,16,0,C,C,-,C,-,
+Flowerstone Gavel,Hammer,10,14,8,0,0,15,C,D,-,-,C,
+Hammer,Hammer,25,14,7,0,0,0,C,D,-,-,-,
+Mace,Hammer,25,12,7,0,0,0,C,D,-,-,-,
+Marika's Hammer,Hammer,10,20,12,0,19,0,B,D,-,C,-,
+Monk's Flamemace,Hammer,25,13,13,0,0,0,D,C,-,-,-,
+Morning Star,Hammer,25,12,8,0,0,0,C,D,-,-,-,Bleed 50
+Nox Flowing Hammer,Hammer,10,17,7,0,0,0,B,D,-,-,-,
+Ringed Finger,Hammer,10,15,9,0,0,0,B,D,-,-,-,
+Scepter of the All-Knowing,Hammer,10,12,18,21,0,0,D,C,C,-,-,
+Spiked Club,Hammer,25,12,7,0,0,0,C,C,-,-,-,Bleed 50
+Stone Club,Hammer,25,16,8,0,0,0,B,E,-,-,-,
+Varré's Bouquet,Hammer,10,8,16,0,0,24,E,C,-,-,B,Bleed 65
+Warpick,Hammer,25,11,9,0,0,0,C,C,-,-,-,
+Dane's Footwork,Hand-to-Hand,25,8,8,0,0,0,C,C,-,-,-,
+Dryleaf Arts,Hand-to-Hand,25,8,8,0,0,0,C,C,-,-,-,
+Bloody Helice,Heavy Thrusting Sword,10,16,19,0,0,17,E,C,-,-,B,Bleed 55
+Dragon King's Cragblade,Heavy Thrusting Sword,10,18,37,0,0,0,D,B,-,-,-,
+Godskin Stitcher,Heavy Thrusting Sword,25,14,17,0,0,0,C,C,-,-,-,
+Great Épée,Heavy Thrusting Sword,25,15,16,0,0,0,D,C,-,-,-,
+Queelign's Greatsword,Heavy Thrusting Sword,25,14,18,0,12,0,D,C,-,D,-,
+Sword Lance,Heavy Thrusting Sword,25,21,11,0,0,0,B,E,-,-,-,
+Dragonscale Blade,Katana,10,12,20,0,0,0,D,B,-,-,-,
+Hand of Malenia,Katana,10,16,48,0,0,0,E,B,-,-,-,Bleed 50
+Meteoric Ore Blade,Katana,10,15,14,18,0,0,C,D,C,-,-,Bleed 50
+Moonveil,Katana,10,12,18,23,0,0,E,B,B,-,-,Bleed 50
+Nagakiba,Katana,25,18,22,0,0,0,D,C,-,-,-,Bleed 45
+Rivers of Blood,Katana,10,12,18,0,0,20,E,B,-,-,D,Bleed 50
+Serpentbone Blade,Katana,25,11,22,0,0,0,E,B,-,-,-,Poison 66
+Star-Lined Sword,Katana,10,10,23,21,0,0,D,B,D,-,-,Bleed 45
+Sword of Night,Katana,10,11,20,0,0,0,-,B,-,-,-,Bleed 45
+Uchigatana,Katana,25,11,15,0,0,0,D,C,-,-,-,Bleed 45
+Bone Bow,Light Bow,25,8,11,0,0,0,D,D,-,-,-,
+Composite Bow,Light Bow,25,15,15,0,0,0,E,D,-,-,-,
+Harp Bow,Light Bow,10,9,9,0,0,0,E,D,-,-,-,
+Misbegotten Shortbow,Light Bow,25,16,8,0,0,0,D,E,-,-,-,
+Red Branch Shortbow,Light Bow,25,8,16,0,0,0,E,D,-,-,-,
+Shortbow,Light Bow,25,8,10,0,0,0,D,D,-,-,-,
+Leda's Sword,Light Greatsword,10,11,22,0,19,0,D,B,-,D,-,
+Milady,Light Greatsword,25,12,17,0,0,0,D,C,-,-,-,
+Rellana's Twin Blades,Light Greatsword,10,13,16,16,16,0,C,C,C,C,-,
+Albinauric Shield,Medium Shield,25,11,0,0,0,0,C,-,-,-,-,
+Banished Knight's Shield,Medium Shield,25,14,0,0,0,0,C,-,-,-,-,
+Beast Crest Heater Shield,Medium Shield,25,10,0,0,0,0,C,-,-,-,-,
+Beastman's Jar-Shield,Medium Shield,25,10,0,0,0,0,D,-,-,-,-,
+Black Leather Shield,Medium Shield,25,10,0,0,0,0,C,-,-,-,-,
+Blue Crest Heater Shield,Medium Shield,25,10,0,0,0,0,C,-,-,-,-,
+Blue-Gold Kite Shield,Medium Shield,25,12,0,0,0,0,C,-,-,-,-,
+Brass Shield,Medium Shield,25,16,0,0,0,0,C,-,-,-,-,
+Candletree Wooden Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,
+Carian Knight's Shield,Medium Shield,25,10,10,15,0,0,C,-,D,-,-,
+Eclipse Crest Heater Shield,Medium Shield,25,10,0,0,0,0,C,-,-,-,-,
+Flame Crest Wooden Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,
+Golden Lion Shield,Medium Shield,10,11,0,0,0,0,B,-,-,-,-,
+Great Turtle Shell,Medium Shield,25,14,0,0,0,0,C,-,-,-,-,
+Hawk Crest Wooden Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,
+Heater Shield,Medium Shield,25,10,0,0,0,0,C,-,-,-,-,
+Horse Crest Wooden Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,
+Inverted Hawk Heater Shield,Medium Shield,25,10,0,0,0,0,C,-,-,-,-,
+Kite Shield,Medium Shield,25,12,0,0,0,0,C,-,-,-,-,
+Large Leather Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,
+Marred Leather Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,Bleed 50
+Marred Wooden Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,Bleed 50
+Messmer Soldier Shield,Medium Shield,25,10,0,0,0,0,C,-,-,-,-,
+Red Crest Heater Shield,Medium Shield,25,10,0,0,0,0,C,-,-,-,-,
+Round Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,
+Scorpion Kite Shield,Medium Shield,25,12,0,0,0,0,C,-,-,-,-,
+Serpent Crest Shield,Medium Shield,25,12,0,0,0,0,C,-,-,-,-,
+Silver Mirrorshield,Medium Shield,10,12,10,10,0,0,C,-,D,-,-,
+Sun Realm Shield,Medium Shield,25,8,0,0,0,0,C,-,-,-,-,
+Twinbird Kite Shield,Medium Shield,25,12,0,0,0,0,C,-,-,-,-,
+Wolf Crest Shield,Medium Shield,25,12,0,0,0,0,C,-,-,-,-,
+Chilling Perfume Bottle,Perfume Bottle,25,3,13,13,0,0,-,C,C,-,-,Frost 60
+Deadly Poison Perfume Bottle,Perfume Bottle,10,3,13,0,0,18,-,C,-,-,C,Poison 66
+Firespark Perfume Bottle,Perfume Bottle,25,3,14,0,0,0,-,B,-,-,-,
+Frenzyflame Perfume Bottle,Perfume Bottle,25,3,10,12,12,0,D,C,D,D,-,Madness 60
+Lightning Perfume Bottle,Perfume Bottle,25,3,16,0,14,0,-,C,-,C,-,
+Grave Scythe,Reaper,25,17,13,0,0,0,C,D,-,-,-,Bleed 55
+Halo Scythe,Reaper,10,13,16,0,15,0,D,C,-,D,-,Bleed 55
+Obsidian Lamina,Reaper,10,12,25,0,0,17,E,B,-,-,D,Bleed 55
+Scythe,Reaper,25,14,14,0,0,0,D,B,-,-,-,Bleed 55
+Winged Scythe,Reaper,10,16,16,0,24,0,D,C,-,C,-,Bleed 55
+Clawmark Seal,Sacred Seal,25,4,0,0,10,0,B,-,-,B,-,
+Dragon Communion Seal,Sacred Seal,10,0,0,0,10,10,-,-,-,C,S,
+Dryleaf Seal,Sacred Seal,25,8,0,0,27,0,D,-,-,S,-,
+Erdtree Seal,Sacred Seal,10,0,0,0,40,0,-,-,-,S,-,
+Finger Seal,Sacred Seal,25,4,0,0,10,0,D,-,-,S,-,
+Fire Knight's Seal,Sacred Seal,25,8,0,0,23,0,D,-,-,S,-,
+Frenzied Flame Seal,Sacred Seal,10,0,0,0,0,0,C,C,C,B,-,Madness 55
+Giant's Seal,Sacred Seal,25,4,0,0,14,0,D,-,-,S,-,
+Godslayer's Seal,Sacred Seal,25,4,0,0,27,0,D,-,-,S,-,
+Golden Order Seal,Sacred Seal,10,0,0,17,17,0,-,-,A,A,-,
+Gravel Stone Seal,Sacred Seal,25,4,0,0,18,0,D,-,-,S,-,
+Spiraltree Seal,Sacred Seal,25,8,0,0,17,0,D,-,-,S,-,
+Blue-White Wooden Shield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Buckler,Small Shield,25,8,13,0,0,0,E,D,-,-,-,
+Coil Shield,Small Shield,10,10,10,0,0,0,D,-,-,-,-,Poison 72
+Gilded Iron Shield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Ice Crest Shield,Small Shield,25,9,0,0,0,0,D,-,-,-,-,
+Iron Roundshield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Man-Serpent's Shield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Perfumer's Shield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Pillory Shield,Small Shield,25,10,0,0,0,0,D,-,-,-,-,
+Red Thorn Roundshield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Rickety Shield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Rift Shield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Riveted Wooden Shield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Scripture Wooden Shield,Small Shield,25,8,0,0,0,0,D,-,-,-,-,
+Shield of Night,Small Shield,10,8,15,0,0,0,-,D,-,-,-,
+Shield of the Guilty,Small Shield,25,8,0,0,0,0,C,-,-,-,-,Bleed 50
+Smithscript Shield,Small Shield,25,10,15,11,11,0,C,D,E,E,-,
+Smoldering Shield,Small Shield,25,10,9,0,12,0,D,-,-,C,-,
+Spiralhorn Shield,Small Shield,25,8,10,0,0,0,D,-,-,-,-,Bleed 45
+Bloodfiend's Fork,Spear,25,14,8,0,0,13,C,E,-,-,D,Bleed 50
+Bolt of Gransax,Spear,10,20,40,0,0,0,D,C,-,-,-,
+Celebrant's Rib-Rake,Spear,25,8,14,0,0,0,D,C,-,-,-,
+Clayman's Harpoon,Spear,25,12,10,12,0,0,C,E,D,-,-,
+Cleanrot Spear,Spear,10,16,16,0,14,0,C,C,-,D,-,
+Cross-Naginata,Spear,25,16,20,0,0,0,D,C,-,-,-,Bleed 50
+Crystal Spear,Spear,10,10,16,16,0,0,D,B,D,-,-,
+Death Ritual Spear,Spear,10,14,20,18,0,0,D,B,D,-,-,
+Inquisitor's Girandole,Spear,10,18,15,0,16,0,C,C,-,B,-,Bleed 50
+Iron Spear,Spear,25,13,11,0,0,0,C,D,-,-,-,
+Partisan,Spear,25,15,12,0,0,0,C,D,-,-,-,
+Pike,Spear,25,20,14,0,0,0,C,D,-,-,-,
+Rotten Crystal Spear,Spear,10,10,16,16,0,0,D,B,D,-,-,Scarlet Rot 55
+Short Spear,Spear,25,10,10,0,0,0,D,C,-,-,-,
+Smithscript Spear,Spear,25,9,12,11,11,0,D,C,E,E,-,
+Spear,Spear,25,12,15,0,0,0,D,C,-,-,-,
+Spiked Spear,Spear,25,14,16,0,0,0,D,D,-,-,-,Bleed 50
+Swift Spear,Spear,25,10,26,0,0,0,-,B,-,-,-,
+Torchpole,Spear,25,14,15,0,0,0,C,C,-,-,-,
+Broadsword,Straight Sword,25,10,10,0,0,0,C,D,-,-,-,
+Cane Sword,Straight Sword,25,8,11,0,0,0,D,C,-,-,-,
+Carian Knight's Sword,Straight Sword,10,10,10,18,0,0,C,D,D,-,-,
+Coded Sword,Straight Sword,10,0,0,0,20,0,-,-,-,A,-,
+Crystal Sword,Straight Sword,10,13,10,15,0,0,C,D,D,-,-,
+Golden Epitaph,Straight Sword,10,12,10,0,14,0,D,D,-,C,-,
+Lazuli Glintstone Sword,Straight Sword,10,8,9,13,0,0,C,D,D,-,-,
+Longsword,Straight Sword,25,10,10,0,0,0,C,D,-,-,-,
+Lordsworn's Straight Sword,Straight Sword,25,10,10,0,0,0,D,D,-,-,-,
+Miquellan Knight's Sword,Straight Sword,10,11,11,0,16,0,D,D,-,D,-,
+Noble's Slender Sword,Straight Sword,25,8,11,0,0,0,E,B,-,-,-,
+Ornamental Straight Sword,Straight Sword,10,10,14,0,0,0,D,B,-,-,-,
+Regalia of Eochaid,Straight Sword,10,12,18,0,0,15,D,C,-,-,C,
+Rotten Crystal Sword,Straight Sword,10,13,10,15,0,0,C,D,D,-,-,Scarlet Rot 50
+Short Sword,Straight Sword,25,8,10,0,0,0,D,C,-,-,-,
+Stone-Sheathed Sword,Straight Sword,10,16,8,0,0,0,B,D,-,-,-,
+Sword of Darkness,Straight Sword,10,14,11,0,24,0,C,D,-,D,-,
+Sword of Light,Straight Sword,10,14,11,0,24,0,C,D,-,D,-,
+Sword of Night and Flame,Straight Sword,10,12,12,24,24,0,D,D,B,B,-,
+Sword of St. Trina,Straight Sword,10,10,12,14,0,0,D,C,D,-,-,Sleep 66
+Velvet Sword of St. Trina,Straight Sword,10,10,12,14,0,0,D,D,D,-,-,Sleep 42
+Warhawk's Talon,Straight Sword,25,10,16,0,0,0,D,C,-,-,-,
+Weathered Straight Sword,Straight Sword,25,7,10,0,0,0,D,C,-,-,-,
+Smithscript Dagger,Throwing Blade,25,5,11,11,11,0,D,B,E,E,-,
+Carian Thrusting Shield,Thrusting Shield,25,17,13,15,0,0,C,C,D,-,-,
+Dueling Shield,Thrusting Shield,25,15,14,0,0,0,D,C,-,-,-,
+Antspur Rapier,Thrusting Sword,25,10,20,0,0,0,D,C,-,-,-,Scarlet Rot 55
+Carian Sorcery Sword,Thrusting Sword,25,10,19,16,0,0,E,D,S,-,-,
+Cleanrot Knight's Sword,Thrusting Sword,25,11,13,0,0,0,C,D,-,-,-,
+Estoc,Thrusting Sword,25,11,13,0,0,0,E,C,-,-,-,
+Frozen Needle,Thrusting Sword,10,11,18,0,0,0,D,B,-,-,-,Frost 60
+Noble's Estoc,Thrusting Sword,25,9,10,0,0,0,D,D,-,-,-,
+Rapier,Thrusting Sword,25,7,12,0,0,0,D,C,-,-,-,
+Rogier's Rapier,Thrusting Sword,25,8,17,0,0,0,E,B,-,-,-,
+Beast-Repellent Torch,Torch,25,12,8,0,0,0,B,D,-,-,-,
+Ghostflame Torch,Torch,25,10,10,14,0,0,D,D,C,-,-,Frost 65
+Lamenting Visage,Torch,10,9,0,0,0,0,A,-,-,-,-,
+Nanaya's Torch,Torch,10,10,10,14,16,0,E,E,E,E,-,Madness 65
+Sentry's Torch,Torch,10,15,8,0,15,0,D,E,-,C,-,
+St. Trina's Torch,Torch,10,10,10,0,14,0,D,D,-,C,-,Sleep 72
+Steel-Wire Torch,Torch,25,10,8,0,0,0,D,B,-,-,-,
+Torch,Torch,25,5,5,0,0,0,C,D,-,-,-,
+Black Steel Twinblade,Twinblade,25,18,15,0,13,0,D,C,-,D,-,
+Eleonora's Poleblade,Twinblade,10,12,21,0,0,19,E,C,-,-,D,Bleed 55
+Euporia,Twinblade,10,16,16,0,24,0,D,D,-,B,-,
+Gargoyle's Black Blades,Twinblade,10,18,15,0,22,0,B,E,-,D,-,
+Gargoyle's Twinblade,Twinblade,25,18,15,0,0,0,B,E,-,-,-,
+Godskin Peeler,Twinblade,25,17,22,0,0,0,D,C,-,-,-,
+Twinblade,Twinblade,25,10,18,0,0,0,D,C,-,-,-,
+Twinned Knight Swords,Twinblade,25,16,18,0,0,0,C,D,-,-,-,
+Giant's Red Braid,Whip,10,18,12,0,21,0,B,D,-,B,-,
+Hoslow's Petal Whip,Whip,25,10,20,0,0,0,D,C,-,-,-,Bleed 55
+Magma Whip Candlestick,Whip,10,8,16,0,18,0,D,B,-,C,-,
+Thorned Whip,Whip,25,8,16,0,0,0,D,C,-,-,-,Bleed 50
+Tooth Whip,Whip,10,10,24,0,0,0,D,B,-,-,-,Poison 66
+Urumi,Whip,25,10,19,0,0,0,E,B,-,-,-,
+Whip,Whip,25,8,14,0,0,0,D,C,-,-,-,`,
 // Armor pieces (188), grouped into sets. PARTIAL — see PARTIAL_REF.
 armor: `name,slot,set
 Vagabond Knight Helm,head,Vagabond Knight

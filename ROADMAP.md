@@ -228,24 +228,48 @@ Consequences worth knowing:
 - Grounded prompt is now 55KB. Correction prompts stay small (~8.5KB) because
   they carry only the tables that actually failed.
 
+## Done (v15) — weapon params, and requirement checking
+- **Weapon data from the game's own params**, patch 1.14 (post-DLC): category,
+  max upgrade, the five requirements, the five scaling grades at max upgrade,
+  and passive status buildup. 479 weapons, 42 categories, 100 with a passive.
+- **Sourced, not recalled.** Taken from a `regulation.bin` dump rather than
+  model memory, because a wrong scaling grade is invisible — nothing downstream
+  can tell a `B` that should be an `A`. The dump also ships the game's own
+  coefficient-to-letter thresholds, so even the grade boundaries are data.
+- **The reconciliation is the reason to trust it:** the dump yields exactly 479
+  armaments, all 479 match the tracker's existing list by name, and nothing is
+  left over on either side. Two independently sourced lists agreeing exactly is
+  far stronger than either alone.
+- **New check — `requirementIssues()`.** The tool now verifies that a build's
+  own final phase can actually wield the weapons it plans around. A bleed build
+  that never levels Arcane far enough for Rivers of Blood is a common LLM
+  failure, and now a caught one. It shows as a flag on the row, in the problem
+  count, and in the correction prompt with the exact shortfall.
+- Rows show what a weapon *is*: `Katana · somber +10 · needs 12 Str, 18 Dex,
+  20 Arc · scales E Str, B Dex, D Arc · Bleed 50`.
+- **The CSV design paid for itself here.** Adding nine columns to the weapons
+  table needed no parser change: `parseCSV` picked them up, `indexRef` carried
+  them onto the entry, and the prompt emitted them, all untouched.
+- Self-test still exact: 1,271 names, zero failures. Grounded prompt 74KB.
+
 ### Where this was heading
-Four of the five steps sketched on 2026-08-22, cheapest first: **(1) stat
-maths** ✔, **(2) item existence and location checking** ✔, **(3) grounded
-generation** ✔, (4) in-tool generation via an API key — **deliberately not
-doing**, (5) attack-rating optimisation.
+Of the five steps sketched on 2026-08-22: **(1) stat maths** ✔, **(2) item
+existence and location checking** ✔, **(3) grounded generation** ✔, (4) in-tool
+generation via an API key — **deliberately not doing**, **(5) attack-rating
+optimisation** — now genuinely within reach.
 
-Step 4 was ruled out on 2026-08-22: it ends the tool's offline, no-account
-property, and the copy-paste loop is good enough to make it unnecessary.
+Step 5 needs what the same dump already contains: `calcCorrectGraphs`,
+`attackElementCorrects`, `reinforceTypes` and base attack values. That is the
+full damage formula, and it would turn the tab from *checking* a build into
+*ranking* weapons for one. It is still a project rather than a feature — the
+formula has real subtleties (per-stat growth curves, two-handing, affinity
+interactions) and being slightly wrong produces confident nonsense.
 
-**The open question is data, not format.** The CSV shape is ready for weapon
-requirements and scaling; what is missing is a trustworthy source. Recall is
-good enough for item *names* and was used for them, but it is not good enough
-for scaling grades, requirement numbers or weapon categories — wrong numbers in
-a generation prompt are worse than absent ones, because nothing downstream can
-tell which rows are wrong. Sourcing options, roughly in order of fidelity: the
-game's own param tables via extraction tooling, a community param dump, then
-wiki scraping. Whatever the source, it must be baked in as static CSV, never
-fetched at runtime, or the offline property goes with it.
+Remaining data gaps, in rough order of value: **armor stats** (weight and poise
+would let the tool check equip load, and armor is still names-only and partial),
+**weapon weight** (absent from this dump), and **spell requirements** (the
+spells table is still name and location only, so a build asking for a spell the
+plan cannot cast is not yet caught — the same check as weapons, one table over).
 
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the

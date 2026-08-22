@@ -589,6 +589,60 @@ things — a wrong `B` for an `A` is invisible and propagates straight into
 generated builds. Take those from the game's params or a community dump, bake
 them in as static CSV columns, and keep the runtime offline.
 
+### Weapon params, 2026-08-22
+
+The weapons table now carries `category`, `maxUpgrade`, five `req*` columns,
+five `scale*` columns and `passive`, taken from the game's own
+`EquipParamWeapon` at **patch 1.14** (post-DLC). Source: the regulation dump in
+[Impossiblefella/elden-ring-aow-calculator](https://github.com/Impossiblefella/elden-ring-aow-calculator),
+`packages/server/src/data/regulation-vanilla-v1.14.json`.
+
+**Why this source and not recall.** Scaling grades and requirement numbers are
+invisible when wrong — nothing downstream can tell a `B` that should be an `A`.
+The dump also ships `scalingTiers`, so the coefficient-to-letter thresholds
+(S 1.75, A 1.4, B 0.9, C 0.6, D 0.25, E 0.01) come from the data rather than
+from a remembered rule of thumb.
+
+**The reconciliation that made it trustworthy.** The dump has 228 infusible
+(affinity 0) plus 252 unique (affinity -1) armaments; minus `Unarmed` that is
+**479, exactly the count already in the tracker, and all 479 matched by name
+with nothing left over on either side.** Two independently sourced lists
+agreeing exactly is much stronger evidence than either alone. If a future patch
+dump disagrees on the count, reconcile before importing — do not assume the
+newer file is right.
+
+Derivations worth knowing:
+
+- **Scaling is at max upgrade**: base `attributeScaling` × the top row of
+  `reinforceTypes[reinforceTypeId]`. `maxUpgrade` is that array's length − 1,
+  which is also what distinguishes smithing (+25) from somber (+10).
+- **Only affinity 0 and −1 are kept.** The other twelve affinities are the same
+  weapon re-rolled; a build names "Uchigatana", never "Keen Uchigatana", and
+  keeping them would have made the table 3,216 rows.
+- **`passive` is the base status buildup** (100 weapons have one), read through
+  `statusSpEffectParamIds` into `statusSpEffectParams`. It is the weapon's own
+  value at standard affinity, not a per-upgrade figure.
+
+**What this unlocked: `requirementIssues()`.** With requirements in the table,
+the tool can check something it never could before — whether the build's *own*
+final phase can actually wield the weapons it plans around. This is a common
+LLM failure (a bleed build that never levels Arcane far enough for Rivers of
+Blood), it is checkable with certainty, and it now appears three places: a flag
+on the row, the build's problem count, and the correction prompt, which states
+the shortfall and attaches the weapon table so the model can re-pick.
+
+The check uses the last phase that names all eight stats, so a build with an
+incomplete final phase is skipped rather than guessed at.
+
+**What is still missing:** weapon weight (not in this dump), and armor stats of
+any kind. Armor remains names/slot/set only. If weight matters later, it needs a
+different source — `EquipParamProtector` for armor, and weapon weight lives in
+`EquipParamWeapon` but was not carried into this particular dump.
+
+**Cost:** the grounded prompt went from 55KB to 74KB. Correction prompts that
+involve a weapon problem now carry the full weapon table (~28KB) because
+re-picking a weapon needs the requirements to pick against.
+
 ## 7. Repo notes
 
 - Git identity is set **repo-locally** (`Paraiga` /

@@ -121,8 +121,20 @@ different region, the wiki's is shown alongside; matching regions stay quiet.
 silently**, so an unflagged item always means it was actually verified.
 
 The reference is stored as CSV, one table per category with a header row naming
-its columns. Adding a column — weapon scaling, armor weight — needs no parser
-change: every column rides along on the entry and goes into the prompt as-is.
+its columns. Adding a column needs no parser change: every column rides along on
+the entry and goes into the prompt as-is.
+
+The weapons table carries real data from the game's own params at patch 1.14 —
+category, max upgrade, the five stat requirements, the five scaling grades at
+max upgrade, and passive status buildup. So a verified weapon shows what it is:
+
+> **Rivers of Blood** — Katana · somber +10 · needs 12 Str, 18 Dex, 20 Arc ·
+> scales E Str, B Dex, D Arc · Bleed 50
+
+**And the tab checks that your build can actually wield its own weapons.** If
+the final phase never reaches 23 Intelligence, a plan built around Moonveil is
+flagged — on the row, in the problem count, and in the correction prompt with
+the exact shortfall. It is a mistake LLM-written builds make often.
 
 Name matching is forgiving about the spellings that differ in practice: accents
 (`Miséricorde` / `Misericorde`), the optional `Ash of War: ` prefix, a trailing
