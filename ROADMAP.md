@@ -111,9 +111,92 @@ Consequences worth knowing:
   `.next` and `.done`, so the markers update live as steps are ticked. `.next`
   and `.done` are mutually exclusive by construction.
 
+## Done (v10)
+- **Build tab**: a third view holding a personal character plan — name,
+  description and playstyle, a five-phase stat table (starting class → lv 30 /
+  60 / 90 / 120), and an equipment checklist grouped by category and by when to
+  chase each piece, with locations.
+- Builds are **imported, never shipped**. The tab carries the prompt to hand an
+  LLM, with a copy button; the answer is pasted back or loaded from a `.json`.
+  The parser is deliberately tolerant of key naming, nesting, flat-vs-grouped
+  equipment and stray markdown fences.
+- Several builds at once, switched by chips. Re-importing a build of the same
+  name replaces it and keeps ticks on gear it still lists.
+- Independent of the tracker by design: separate storage keys, a separate
+  `buildId::category::item` ID namespace, separate render. Nothing in `DATA`,
+  `QUESTS`, `CATEGORIES` or `migrateChecked()` changed.
+- Backups are now `version: 2` and carry builds; v1 backups still import, and a
+  backup without builds no longer wipes builds on the device.
+- **This is not a reversal of the v8 cut.** That cut removed ~1,200 curated
+  checkboxes the app shipped with and that grew per category. The app ships with
+  zero build data; a build is short, personal, and cannot grow on its own.
+
+## Done (v11)
+- **Stat validation on builds.** Every Elden Ring character's eight stats sum to
+  exactly `level + 79`, so a generated build that spends more points than it has
+  levels is detectable with arithmetic alone — no weapon data, no network.
+- The stat table gains a **Level these stats need** row, marks phases that
+  disagree with the level they claim, and lists findings in plain language.
+- Also checks: first phase against the named class's real spread, stats below
+  the class floor, stats going down, the 99 cap, non-increasing levels. A phase
+  missing stats is reported as unverifiable rather than passed.
+- `STARTING_CLASSES` (ten rows, Fextralife) is the only real game data in the
+  tool. The identity above cross-checks all ten, and settled a conflict with
+  Maxroll over the Prophet's and Prisoner's starting levels.
+- The prompt now states the arithmetic rule, gives the four target totals and
+  embeds the ten class blocks — cheaper than validating after the fact.
+- Builds that fail still import and render. The tool reports, never refuses.
+
+## Done (v11.1)
+- **Repair buttons** on a failing stat plan. An overspent phase has two correct
+  fixes, so both are offered: *rebalance the stats to the stated levels*
+  (proportional to each stat's investment above its floor, so the build stays
+  recognisable) or *restate the levels to match the stats*.
+- Phases are repaired in order, each floored by the previous repaired phase, so
+  a fix can never introduce a stat that goes down. Largest-remainder
+  apportionment keeps the rescaled totals landing exactly on target.
+- Every repair reports what it changed and is reversible — `phasesBackup` holds
+  the as-imported stats and Revert always returns to the file, not to the
+  previous repair. Nothing is ever repaired automatically.
+- Phases with no legal fix are left alone and stay flagged, with a line saying
+  so, rather than being guessed at.
+
+## Done (v12) — item reference checking
+- **1,083 real item names embedded**, and the Build tab now checks gear against
+  them: weapons 479 (incl. shields, staves, seals, bows), spells 213, talismans
+  154, ashes of war 116, spirit ashes 84, crystal tears 37.
+- Talismans, spells and spirit ashes were **recovered from the v7 commit**, where
+  they had already been sourced and corrected over several sessions. Weapons came
+  from the game's own datamined menu strings, cross-checked against 42 wiki
+  category pages in both directions. Ashes of war and crystal tears were
+  extracted from raw wiki HTML.
+- **Armor and "Other" are reported as "not checked"**, never silently passed.
+  Silence has to mean "verified", or the feature cannot be trusted.
+- Invented items are flagged; misspellings get the correct name and a one-click
+  fix that carries the checklist tick across the rename.
+- Location cross-checking works at **region granularity and is tuned to
+  under-report** — it catches "your build says Caelid but it is in Liurnia" and
+  stays quiet on within-region imprecision.
+- **Sourcing lesson recorded in HANDOVER:** fetching wiki lists through a
+  summarising model truncated and hallucinated. Extract raw HTML or use
+  datamined params, then reconcile the count against a published total.
+- index.html is now 209KB / 4,041 lines. Still one file, still offline.
+
+### Where this was heading
+Steps 1 and 2 of five sketched on 2026-08-22, cheapest first: **(1) stat
+maths** ✔, **(2) item existence and location checking** ✔, (3) grounded
+generation feeding that data into the prompt, (4) in-tool generation via an API
+key, (5) attack-rating optimisation. Steps 3 and 4 end the tool's offline
+property — that is the real decision, not the code.
+
+Step 3 is now much cheaper than it was: the reference data it needs already
+exists in the page, so "grounded generation" is mostly a matter of putting the
+relevant slice into the prompt. Armor remains the one gap in the reference.
+
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the
-old roadmap; the v8 cut is the decision not to do them.
+old roadmap; the v8 cut is the decision not to do them. The Build tab is not a
+route back in: it holds *your* shortlist, not the game's catalogue.
 
 Also deliberately not doing: splitting oversized "Open World" blocks by sub-area.
 

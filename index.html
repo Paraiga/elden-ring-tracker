@@ -242,6 +242,134 @@
   /* ---- view toggle ---- */
   .view-btn.active { background: #2e2717; color: var(--gold); border-color: var(--gold-dim); }
   body.quests-view .chip:not(.toggle) { display: none; }
+  /* ---- build view ---- */
+  /* None of the tracker's filters mean anything to a build, so the whole
+     filter apparatus steps out of the way rather than sitting there inert. */
+  body.build-view .toolbar input[type=search],
+  body.build-view #filters-btn,
+  body.build-view .chips { display: none; }
+  .build-bar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px;
+  }
+  .build-bar .chip { cursor: pointer; }
+  .build-bar .spacer { flex: 1 1 auto; }
+  .build-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
+    margin-top: 14px; padding: 14px 16px 16px;
+  }
+  .build-title { color: var(--gold); font-size: 1.25em; letter-spacing: 1px; }
+  .build-class { color: var(--text-dim); font-size: .84em; font-style: italic; margin-top: 2px; }
+  .build-head-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .build-head-row .bar { flex: 1 1 140px; }
+  .build-prose { margin-top: 10px; line-height: 1.55; font-size: .95em; }
+  .build-prose p { margin-top: 4px; }
+  .build-sub {
+    color: #6e6350; font-weight: normal; text-transform: uppercase;
+    letter-spacing: 2px; font-size: .68em; margin: 14px 0 3px;
+    border-bottom: 1px solid #2b2517; padding-bottom: 2px;
+  }
+  /* The stat table is the one thing here that cannot usefully reflow, so it
+     scrolls inside its own box instead of forcing the page sideways. */
+  .stat-scroll { overflow-x: auto; margin-top: 6px; }
+  table.stats { border-collapse: collapse; width: 100%; min-width: 500px; font-size: .9em; }
+  table.stats th, table.stats td {
+    padding: 5px 8px; text-align: center; border-bottom: 1px solid #2b2517;
+  }
+  table.stats th.rowhead, table.stats td.rowhead {
+    text-align: left; color: var(--text-dim); white-space: nowrap; font-weight: normal;
+  }
+  table.stats thead th {
+    color: var(--gold-dim); font-weight: normal; text-transform: uppercase;
+    letter-spacing: 1px; font-size: .78em; vertical-align: bottom;
+  }
+  table.stats thead th .lvl {
+    display: block; color: var(--text-dim); font-size: 1em;
+    letter-spacing: 0; text-transform: none; font-style: italic;
+  }
+  /* a stat that climbs this phase is where your runes go — say so */
+  table.stats td.up { color: var(--gold); }
+  table.stats tr.spend td { border-bottom: none; color: var(--text-dim); font-size: .84em; }
+  table.stats tr.spend td.rowhead { font-style: italic; }
+  table.stats thead th.bad { color: #c98a8a; }
+  table.stats thead th.bad::after { content: " ⚠"; }
+  table.stats tr.spend td.bad { color: #c98a8a; }
+  table.stats tr.implied td.ok { color: var(--done); }
+  .stat-note { color: var(--text-dim); font-size: .78em; font-style: italic; margin-top: 6px; }
+  /* validation findings */
+  .check { margin-top: 12px; font-size: .88em; line-height: 1.5; }
+  .check-ok { color: var(--done-bright); }
+  .check-head { color: #c98a8a; letter-spacing: .5px; }
+  .check-list { list-style: none; margin-top: 5px; }
+  .check-list li { padding: 3px 0 3px 20px; position: relative; }
+  .check-list li::before { position: absolute; left: 2px; }
+  .check-list li.error { color: #c98a8a; }
+  .check-list li.error::before { content: "✕"; }
+  .check-list li.warn { color: var(--text-dim); }
+  .check-list li.warn::before { content: "!"; color: var(--gold-dim); }
+  .fix-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  /* what the repair actually did — kept until the next render, then gone */
+  .fix-report {
+    border-left: 2px solid var(--done); background: #1a1a12;
+    padding: 8px 12px; border-radius: 0 3px 3px 0; margin-bottom: 10px;
+  }
+  .fix-head { color: var(--done-bright); }
+  .fix-list { list-style: none; margin-top: 4px; color: var(--text-dim); font-size: .92em; }
+  .fix-list li { padding: 2px 0; }
+  /* equipment */
+  .equip-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 10px; margin-top: 12px;
+  }
+  .equip-cat {
+    background: #1a160f; border: 1px solid var(--border); border-radius: 4px;
+    padding: 8px 10px 10px; align-self: start;
+  }
+  .equip-cat.complete { border-color: #3d422c; }
+  .equip-cat-head { display: flex; align-items: baseline; gap: 8px; }
+  .equip-cat-name { color: var(--gold-dim); font-size: .95em; letter-spacing: .5px; flex: 1; }
+  .equip-cat.complete .equip-cat-name { color: var(--done); }
+  .equip-cat-count { color: var(--text-dim); font-size: .75em; white-space: nowrap; }
+  .equip-stage {
+    color: #6e6350; text-transform: uppercase; letter-spacing: 2px;
+    font-size: .68em; margin: 8px 0 2px; border-bottom: 1px solid #2b2517; padding-bottom: 2px;
+  }
+  #build label.item { align-items: flex-start; }
+  #build label.item .name { flex: 1 1 auto; }
+  .equip-meta { display: block; }
+  .equip-note { color: #6e6350; font-size: .8em; font-style: italic; display: block; }
+  label.item input:checked ~ .name .equip-note { color: #45412f; }
+  /* reference checking */
+  .equip-flag { display: block; font-size: .8em; color: #c98a8a; }
+  .equip-flag::before { content: "✕ "; }
+  label.item.suspect .name { color: #d8bdbd; }
+  label.item input:checked ~ .name .equip-flag { color: #7a5a5a; }
+  .equip-ref { display: block; font-size: .8em; color: var(--gold-dim); }
+  .equip-cover { font-size: .72em; letter-spacing: .5px; color: var(--done); margin: 2px 0 4px; }
+  .equip-cover.bad { color: #c98a8a; }
+  .equip-cover.dim { color: #5c5646; font-style: italic; }
+  .equip-summary { font-size: .85em; margin-top: 6px; line-height: 1.5; }
+  .equip-summary span { display: block; }
+  .equip-summary .ok { color: var(--done-bright); }
+  .equip-summary .bad { color: #c98a8a; }
+  .equip-summary .dim { color: var(--text-dim); font-style: italic; }
+  /* import / prompt */
+  .build-empty { text-align: center; padding: 6px 0 2px; }
+  .build-empty .build-title { display: block; margin-bottom: 6px; }
+  .build-empty p { color: var(--text-dim); font-size: .92em; line-height: 1.55; max-width: 620px; margin: 0 auto; }
+  .build-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+  .prompt-box {
+    white-space: pre-wrap; background: #14110c; border: 1px solid var(--border);
+    border-radius: 4px; padding: 10px 12px; margin-top: 8px;
+    font-family: ui-monospace, Consolas, monospace; font-size: .76em; line-height: 1.5;
+    color: var(--text-dim); max-height: 320px; overflow: auto; text-align: left;
+  }
+  .paste-area {
+    width: 100%; min-height: 110px; margin-top: 8px; padding: 8px;
+    background: #14110c; border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font-family: ui-monospace, Consolas, monospace; font-size: .8em;
+  }
+  .paste-area:focus { outline: 1px solid var(--gold-dim); }
+  .build-err { color: #c98a8a; font-size: .85em; margin-top: 8px; }
   /* ---- quest markers inside zones ---- */
   .quest-strip {
     grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
@@ -301,6 +429,7 @@
   <div class="toolbar">
     <button id="view-zones" class="view-btn">Zones</button>
     <button id="view-quests" class="view-btn">Quests</button>
+    <button id="view-build" class="view-btn">Build</button>
     <input type="search" id="search" placeholder="Filter zones, dungeons, bosses...">
     <button id="filters-btn" title="Show or hide the category filters">Filters <span id="filters-caret">▾</span></button>
     <div class="menu-wrap">
@@ -316,6 +445,7 @@
       </div>
     </div>
     <input type="file" id="import-file" accept=".json" style="display:none">
+    <input type="file" id="build-file" accept=".json,application/json" style="display:none">
   </div>
   <div class="chips" id="chips">
     <span class="chips-label">Show:</span>
@@ -329,6 +459,7 @@
 
 <main id="tracker"></main>
 <main id="quests" class="hidden"></main>
+<main id="build" class="hidden"></main>
 
 <footer>
   Progress is saved automatically in this browser. Use Export to make a backup file.<br>
@@ -1366,11 +1497,13 @@ CATEGORIES.forEach(c => { if (!(c in activeCats)) activeCats[c] = true; });
 function setView(v) {
   view = v;
   localStorage.setItem(VIEW_KEY, v);
-  document.getElementById("tracker").classList.toggle("hidden", v !== "zones");
-  document.getElementById("quests").classList.toggle("hidden", v !== "quests");
-  document.getElementById("view-zones").classList.toggle("active", v === "zones");
-  document.getElementById("view-quests").classList.toggle("active", v === "quests");
+  ["zones", "quests", "build"].forEach(name => {
+    const paneId = name === "zones" ? "tracker" : name;
+    document.getElementById(paneId).classList.toggle("hidden", v !== name);
+    document.getElementById("view-" + name).classList.toggle("active", v === name);
+  });
   document.body.classList.toggle("quests-view", v === "quests");
+  document.body.classList.toggle("build-view", v === "build");
   applyFilters();
 }
 
@@ -1462,12 +1595,16 @@ function migrateChecked() {
   if (changed) localStorage.setItem(STORE_KEY, JSON.stringify(checked));
 }
 
-function save() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(checked));
+function flashSaved() {
   const flash = document.getElementById("save-flash");
   flash.classList.add("show");
-  clearTimeout(save._t);
-  save._t = setTimeout(() => flash.classList.remove("show"), 900);
+  clearTimeout(flashSaved._t);
+  flashSaved._t = setTimeout(() => flash.classList.remove("show"), 900);
+}
+
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(checked));
+  flashSaved();
 }
 const saveOpen = () => localStorage.setItem(OPEN_KEY, JSON.stringify(openZones));
 const saveCats = () => localStorage.setItem(CATS_KEY, JSON.stringify(activeCats));
@@ -1980,7 +2117,10 @@ document.getElementById("view-quests").addEventListener("click", () => setView("
 
 // Export / Import / Reset
 document.getElementById("export-btn").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify({ version: 1, checked }, null, 2)], { type: "application/json" });
+  // v2 adds builds. Older importers read `checked` and ignore the rest, and the
+  // importer below treats every build field as optional, so v1 files still load.
+  const payload = { version: 2, checked, builds, buildChecked, activeBuild };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   const d = new Date();
@@ -2001,6 +2141,15 @@ document.getElementById("import-file").addEventListener("change", e => {
       migrateChecked();
       save();
       build();
+      // Builds are optional: a v1 backup has none, and importing one must not
+      // wipe builds already on this device.
+      if (Array.isArray(data.builds)) {
+        builds = data.builds;
+        buildChecked = (data.buildChecked && typeof data.buildChecked === "object") ? data.buildChecked : {};
+        activeBuild = data.activeBuild || (builds.length ? builds[0].id : null);
+        saveBuilds(); saveBuildChecked(); saveActiveBuild();
+        renderBuildView();
+      }
     } catch (err) {
       alert("Could not read that backup file.");
     }
@@ -2009,11 +2158,1250 @@ document.getElementById("import-file").addEventListener("change", e => {
   reader.readAsText(file);
 });
 document.getElementById("reset-btn").addEventListener("click", () => {
-  if (confirm("Reset ALL progress? This cannot be undone (export a backup first if unsure).")) {
+  if (confirm("Reset ALL progress — tracker ticks and build checklists?\n\n" +
+              "Your imported builds themselves are kept. This cannot be undone " +
+              "(export a backup first if unsure).")) {
     checked = {};
     save();
     build();
+    buildChecked = {};
+    saveBuildChecked();
+    renderBuildView();
   }
+});
+
+// ============================================================================
+// BUILDS — a personal character plan, imported rather than shipped.
+//
+// Deliberately independent of the tracker: its own storage keys, its own
+// render, nothing in DATA or QUESTS, and no entry in CATEGORIES. The app
+// still ships with zero build data, so this cannot grow the way the v8 scope
+// cut existed to prevent — a build is short, personal, and arrives as JSON
+// (hand BUILD_PROMPT to an LLM, paste the answer back).
+//
+// Checklist IDs are "buildId::category::item name", a namespace of their own,
+// so nothing here can collide with a tracker ID. Re-importing a corrected
+// version of a build keeps its ticks for exactly that reason.
+// ============================================================================
+const BUILDS_KEY       = "elden-ring-builds-v1";
+const BUILD_ACTIVE_KEY = "elden-ring-builds-active";
+const BUILD_CHECK_KEY  = "elden-ring-builds-checked";
+
+let builds = [];
+let activeBuild = null;
+let buildChecked = {};
+
+try { builds = JSON.parse(localStorage.getItem(BUILDS_KEY)) || []; } catch (e) { builds = []; }
+try { buildChecked = JSON.parse(localStorage.getItem(BUILD_CHECK_KEY)) || {}; } catch (e) { buildChecked = {}; }
+try { activeBuild = localStorage.getItem(BUILD_ACTIVE_KEY) || null; } catch (e) { activeBuild = null; }
+if (!Array.isArray(builds)) builds = [];
+
+const saveBuilds = () => localStorage.setItem(BUILDS_KEY, JSON.stringify(builds));
+const saveBuildChecked = () => localStorage.setItem(BUILD_CHECK_KEY, JSON.stringify(buildChecked));
+const saveActiveBuild = () => {
+  if (activeBuild) localStorage.setItem(BUILD_ACTIVE_KEY, activeBuild);
+  else localStorage.removeItem(BUILD_ACTIVE_KEY);
+};
+
+// Endurance is not in the five-stat list a build usually quotes, but every
+// real build spends points on it. Rows with no data in any phase are dropped
+// at render time, so a JSON that omits it simply shows seven rows.
+const STAT_DEFS = [
+  { key: "vig", label: "Vigor",        aliases: ["vig", "vigor"] },
+  { key: "mnd", label: "Mind",         aliases: ["mnd", "mind"] },
+  { key: "end", label: "Endurance",    aliases: ["end", "endurance"] },
+  { key: "str", label: "Strength",     aliases: ["str", "strength"] },
+  { key: "dex", label: "Dexterity",    aliases: ["dex", "dexterity"] },
+  { key: "int", label: "Intelligence", aliases: ["int", "intelligence"] },
+  { key: "fai", label: "Faith",        aliases: ["fai", "fth", "faith"] },
+  { key: "arc", label: "Arcane",       aliases: ["arc", "arcane"] }
+];
+
+const EQUIP_DEFS = [
+  { key: "weapons",    label: "Weapons",        aliases: ["weapons", "weapon"] },
+  { key: "armor",      label: "Armor",          aliases: ["armor", "armour", "armorset", "armorpieces"] },
+  { key: "talismans",  label: "Talismans",      aliases: ["talismans", "talisman"] },
+  { key: "physick",    label: "Physick Flask",  aliases: ["physick", "physickflask", "wondrousphysick", "flask", "flasks", "tears"] },
+  { key: "spells",     label: "Spells & Incantations", aliases: ["spells", "spell", "incantations", "sorceries", "magic"] },
+  { key: "ashes",      label: "Ashes of War",   aliases: ["ashes", "ashesofwar", "ashofwar", "ashwar"] },
+  { key: "spirits",    label: "Spirit Ashes",   aliases: ["spirits", "spiritashes", "summons"] },
+  { key: "other",      label: "Other",          aliases: ["other", "misc", "miscellaneous", "items", "keyitems"] }
+];
+
+// The one piece of real game data in here, and it buys a total correctness
+// check for free: EVERY Elden Ring character satisfies
+//
+//     the eight stats added together === level + 79
+//
+// because the Wretch starts at level 1 holding 80 points and each level buys
+// exactly one more. It is class-independent, needs no weapon data and no
+// network, and it catches the single most common fault in a generated build:
+// a stat spread that cannot exist at the level it claims.
+//
+// Sourced from the Fextralife Classes page and cross-checked with the identity
+// above — all ten blocks satisfy it. That check also settled a source conflict:
+// Maxroll lists Prophet at level 8 and Prisoner at 10, but their stat blocks
+// total 86 and 88, which are only reachable at 7 and 9.
+const STAT_TOTAL_OFFSET = 79;
+const STARTING_CLASSES = [
+  { name: "Wretch",     level:  1, stats: { vig: 10, mnd: 10, end: 10, str: 10, dex: 10, int: 10, fai: 10, arc: 10 } },
+  { name: "Bandit",     level:  5, stats: { vig: 10, mnd: 11, end: 10, str:  9, dex: 13, int:  9, fai:  8, arc: 14 } },
+  { name: "Astrologer", level:  6, stats: { vig:  9, mnd: 15, end:  9, str:  8, dex: 12, int: 16, fai:  7, arc:  9 } },
+  { name: "Hero",       level:  7, stats: { vig: 14, mnd:  9, end: 12, str: 16, dex:  9, int:  7, fai:  8, arc: 11 } },
+  { name: "Prophet",    level:  7, stats: { vig: 10, mnd: 14, end:  8, str: 11, dex: 10, int:  7, fai: 16, arc: 10 } },
+  { name: "Warrior",    level:  8, stats: { vig: 11, mnd: 12, end: 11, str: 10, dex: 16, int: 10, fai:  8, arc:  9 } },
+  { name: "Prisoner",   level:  9, stats: { vig: 11, mnd: 12, end: 11, str: 11, dex: 14, int: 14, fai:  6, arc:  9 } },
+  { name: "Samurai",    level:  9, stats: { vig: 12, mnd: 11, end: 13, str: 12, dex: 15, int:  9, fai:  8, arc:  8 } },
+  { name: "Vagabond",   level:  9, stats: { vig: 15, mnd: 10, end: 11, str: 14, dex: 13, int:  9, fai:  9, arc:  7 } },
+  { name: "Confessor",  level: 10, stats: { vig: 10, mnd: 13, end: 10, str: 12, dex: 12, int:  9, fai: 14, arc:  9 } }
+];
+
+const STAGE_DEFS = [
+  { key: "start",   label: "Starting gear" },
+  { key: "early",   label: "Early game" },
+  { key: "mid",     label: "Mid game" },
+  { key: "late",    label: "Late game" },
+  { key: "endgame", label: "Endgame goal" }
+];
+
+// An LLM will not spell its keys the way we do twice running, so every lookup
+// goes through here: case, spaces, underscores and hyphens are all ignored.
+function pickKey(obj, aliases) {
+  if (!obj || typeof obj !== "object") return undefined;
+  const flat = {};
+  Object.keys(obj).forEach(k => { flat[k.toLowerCase().replace(/[\s_-]/g, "")] = obj[k]; });
+  for (const a of aliases) {
+    const v = flat[a.toLowerCase().replace(/[\s_-]/g, "")];
+    if (v !== undefined && v !== null) return v;
+  }
+  return undefined;
+}
+
+function normStage(raw) {
+  if (!raw) return null;
+  const t = String(raw).toLowerCase();
+  if (/start|initial|beginning|class/.test(t)) return "start";
+  if (/early/.test(t)) return "early";
+  if (/end|final|goal|target/.test(t)) return "endgame";
+  if (/late/.test(t)) return "late";
+  if (/mid/.test(t)) return "mid";
+  return null;
+}
+
+function normEquipItem(raw) {
+  if (typeof raw === "string") return { name: raw.trim(), location: "", notes: "", stage: null };
+  if (!raw || typeof raw !== "object") return null;
+  const name = pickKey(raw, ["name", "item", "title", "piece", "weapon"]);
+  if (!name) return null;
+  return {
+    name: String(name).trim(),
+    location: String(pickKey(raw, ["location", "where", "howtoget", "source", "obtain"]) || "").trim(),
+    notes: String(pickKey(raw, ["notes", "note", "why", "reason", "detail"]) || "").trim(),
+    stage: normStage(pickKey(raw, ["stage", "phase", "when", "priority", "tier"]))
+  };
+}
+
+// Accepts the documented shape (equipment as an object of named arrays) and
+// the two things LLMs produce instead: one flat array of items carrying their
+// own "category", or an unknown category name we cannot place.
+function normEquipment(raw) {
+  const out = {};
+  EQUIP_DEFS.forEach(d => { out[d.key] = []; });
+  if (!raw) return out;
+
+  const push = (catKey, item) => { if (item) (out[catKey] = out[catKey] || []).push(item); };
+  const resolveCat = label => {
+    const flat = String(label || "").toLowerCase().replace(/[\s_-]/g, "");
+    const hit = EQUIP_DEFS.find(d => d.aliases.some(a => a.replace(/[\s_-]/g, "") === flat));
+    return hit ? hit.key : "other";
+  };
+
+  if (Array.isArray(raw)) {
+    raw.forEach(entry => push(resolveCat(pickKey(entry, ["category", "type", "slot", "kind"])), normEquipItem(entry)));
+    return out;
+  }
+  Object.keys(raw).forEach(label => {
+    const list = raw[label];
+    if (!Array.isArray(list)) return;
+    const catKey = resolveCat(label);
+    list.forEach(entry => push(catKey, normEquipItem(entry)));
+  });
+  return out;
+}
+
+function normPhases(raw, startingClass) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((p, i) => {
+    const statSrc = pickKey(p, ["stats", "attributes", "stat"]) || p;
+    const stats = {};
+    STAT_DEFS.forEach(d => {
+      const v = pickKey(statSrc, d.aliases);
+      const n = Number(v);
+      if (v !== undefined && v !== "" && !Number.isNaN(n)) stats[d.key] = n;
+    });
+    const lvl = Number(pickKey(p, ["level", "lvl", "targetlevel"]));
+    let label = pickKey(p, ["phase", "label", "name", "milestone"]);
+    if (!label) label = i === 0 ? (startingClass || "Start") : "Phase " + i;
+    return { label: String(label), level: Number.isNaN(lvl) ? null : lvl, stats };
+  });
+}
+
+const slugify = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "build";
+
+function normalizeBuild(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("not a build object");
+  const name = pickKey(raw, ["name", "buildname", "title"]);
+  if (!name) throw new Error('missing "name"');
+  const startingClass = String(pickKey(raw, ["startingclass", "class", "startclass"]) || "").trim();
+  const phases = normPhases(pickKey(raw, ["statprogression", "stats", "phases", "progression", "levelling", "leveling"]), startingClass);
+  const equipment = normEquipment(pickKey(raw, ["equipment", "equipmentroute", "gear", "route", "loadout"]));
+  const total = EQUIP_DEFS.reduce((n, d) => n + (equipment[d.key] || []).length, 0);
+  if (!phases.length && !total) throw new Error("no stat progression and no equipment — is this a build file?");
+  return {
+    id: slugify(name),
+    name: String(name).trim(),
+    startingClass,
+    description: String(pickKey(raw, ["description", "summary", "about", "overview"]) || "").trim(),
+    playstyle: String(pickKey(raw, ["playstyle", "howtoplay", "gameplay", "style"]) || "").trim(),
+    phases,
+    equipment,
+    imported: new Date().toISOString().slice(0, 10)
+  };
+}
+
+// ---- stat validation ----
+// Everything here is arithmetic against STARTING_CLASSES. A build that fails
+// is still imported and still rendered: the tool reports, it does not refuse.
+
+const findClass = name => {
+  const t = String(name || "").toLowerCase().replace(/[^a-z]/g, "");
+  return t ? STARTING_CLASSES.find(c => c.name.toLowerCase() === t) || null : null;
+};
+const classMatchingStats = stats =>
+  STARTING_CLASSES.find(c => STAT_DEFS.every(d => stats[d.key] === c.stats[d.key])) || null;
+
+// null when any of the eight is missing — an incomplete phase cannot be checked
+function phaseTotal(p) {
+  let sum = 0;
+  for (const d of STAT_DEFS) {
+    const v = p.stats[d.key];
+    if (v === undefined) return null;
+    sum += v;
+  }
+  return sum;
+}
+const impliedLevel = p => {
+  const t = phaseTotal(p);
+  return t === null ? null : t - STAT_TOTAL_OFFSET;
+};
+
+function joinList(a) {
+  return a.length < 2 ? (a[0] || "") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
+}
+
+function validateBuild(b) {
+  const issues = [];
+  const add = (kind, phase, text) => issues.push({ kind, phase, text });
+  const cls = findClass(b.startingClass);
+  if (b.startingClass && !cls) {
+    add("warn", null, '"' + b.startingClass + '" is not one of the ten starting classes, ' +
+        "so the starting-stat and floor checks were skipped.");
+  }
+
+  b.phases.forEach((p, i) => {
+    const label = p.label || "Phase " + i;
+    const missing = STAT_DEFS.filter(d => p.stats[d.key] === undefined).map(d => d.label);
+    const classChecked = cls && i === 0 && !missing.length;
+
+    if (missing.length) {
+      add("warn", i, label + " is missing " + joinList(missing) +
+          ", so its level cannot be checked. Ask for all eight stats.");
+    } else if (p.level == null) {
+      add("warn", i, label + " has no level. Its stats add up to level " + impliedLevel(p) + ".");
+    } else if (!classChecked) {
+      const implied = impliedLevel(p);
+      if (implied !== p.level) {
+        const diff = Math.abs(implied - p.level);
+        add("error", i, label + " says level " + p.level + ", but its stats add up to level " +
+            implied + " — " + diff + " point" + (diff === 1 ? "" : "s") + " too " +
+            (implied > p.level ? "many" : "few") + ".");
+      }
+    }
+  });
+
+  // The first phase is not a free choice: it is whatever the class starts with.
+  if (cls && b.phases.length && phaseTotal(b.phases[0]) !== null) {
+    const p0 = b.phases[0];
+    const off = STAT_DEFS.filter(d => p0.stats[d.key] !== cls.stats[d.key]);
+    if (off.length) {
+      const other = classMatchingStats(p0.stats);
+      add("error", 0, "The first phase is not the " + cls.name + "'s actual starting spread (" +
+          off.map(d => d.label + " " + p0.stats[d.key] + ", not " + cls.stats[d.key]).join("; ") + ")" +
+          (other ? " — that is the " + other.name + "'s." : "."));
+    }
+    if (p0.level != null && p0.level !== cls.level) {
+      add("error", 0, "The " + cls.name + " starts at level " + cls.level + ", not " + p0.level + ".");
+    }
+  }
+
+  // Grouped per stat rather than per phase — one real mistake should read as
+  // one line, not as the same line repeated five times.
+  STAT_DEFS.forEach(d => {
+    // A stat that visibly drops between two phases is reported as the drop —
+    // saying it is also under the class floor is the same fault stated twice.
+    let dropped = false;
+    for (let i = 1; i < b.phases.length; i++) {
+      const a = b.phases[i - 1].stats[d.key], v = b.phases[i].stats[d.key];
+      if (a !== undefined && v !== undefined && v < a) {
+        add("error", i, d.label + " drops from " + a + " to " + v + " at " +
+            (b.phases[i].label || "phase " + i) + ". Stats can never go down.");
+        dropped = true;
+        break;
+      }
+    }
+    if (cls && !dropped) {
+      const under = b.phases.filter(p => p.stats[d.key] !== undefined && p.stats[d.key] < cls.stats[d.key]);
+      if (under.length && !(under.length === 1 && under[0] === b.phases[0])) {
+        add("error", null, d.label + " stays below the " + cls.name + "'s starting " +
+            cls.stats[d.key] + " (lowest: " + Math.min(...under.map(p => p.stats[d.key])) +
+            "). A stat can never be lower than what the class begins with.");
+      }
+    }
+    if (b.phases.some(p => p.stats[d.key] > 99)) add("error", null, d.label + " goes above the cap of 99.");
+  });
+
+  for (let i = 1; i < b.phases.length; i++) {
+    const prev = b.phases[i - 1], p = b.phases[i];
+    if (p.level != null && prev.level != null && p.level <= prev.level) {
+      add("error", i, (p.label || "Phase " + i) + " is level " + p.level +
+          ", which is not above " + (prev.label || "the previous phase") + "'s " + prev.level + ".");
+    }
+  }
+  return issues;
+}
+
+// ---- repair ----
+// Never runs on its own. Validation reports; the player decides whether to
+// change their own build, and everything here is reversible.
+
+// No class puts a stat below these, so they are the safe floor when the build
+// names a class we do not recognise. Derived, not typed, so it cannot drift.
+const ABSOLUTE_FLOOR = {};
+STAT_DEFS.forEach(d => {
+  ABSOLUTE_FLOOR[d.key] = Math.min(...STARTING_CLASSES.map(c => c.stats[d.key]));
+});
+
+// Largest-remainder apportionment: rescale a set of integers to an exact new
+// total. Floor everything, then hand the leftover units to the largest
+// fractions — which is what stops a proportional rescale from drifting off the
+// target by a point or two, the very error we are trying to fix.
+function apportion(values, target) {
+  const total = values.reduce((a, b) => a + b, 0);
+  if (total <= 0 || target <= 0) return values.map(() => 0);
+  const raw = values.map(v => v * target / total);
+  const out = raw.map(Math.floor);
+  let left = target - out.reduce((a, b) => a + b, 0);
+  raw.map((v, i) => ({ i, frac: v - Math.floor(v) }))
+     .sort((a, b) => b.frac - a.frac)
+     .forEach(o => { if (left > 0) { out[o.i]++; left--; } });
+  return out;
+}
+
+// Where to put points when a phase has no investment above its floor to scale.
+// The build's own overall direction is the best guess available; Vigor is the
+// honest last resort.
+function growthTemplate(b, keys) {
+  const complete = b.phases.filter(p => keys.every(k => p.stats[k] !== undefined));
+  if (complete.length >= 2) {
+    const first = complete[0].stats, last = complete[complete.length - 1].stats;
+    const t = keys.map(k => Math.max(0, last[k] - first[k]));
+    if (t.some(v => v > 0)) return t;
+  }
+  return keys.map(k => (k === "vig" ? 1 : 0));
+}
+
+function clampTo99(stats, keys, floor) {
+  for (let pass = 0; pass < 8; pass++) {
+    let over = 0;
+    keys.forEach(k => { if (stats[k] > 99) { over += stats[k] - 99; stats[k] = 99; } });
+    if (!over) return;
+    const room = keys.filter(k => stats[k] < 99);
+    if (!room.length) return;
+    const give = apportion(room.map(k => Math.max(1, stats[k] - floor[k])), over);
+    room.forEach((k, j) => { stats[k] = Math.min(99, stats[k] + give[j]); });
+  }
+}
+
+// Rewrites the stats so every phase is reachable at the level it names, keeping
+// the shape of the build: each phase's investment above its floor is rescaled
+// proportionally, so the ratio between the stats the build actually cares about
+// survives. Phases are fixed in order, each one floored by the previous fixed
+// phase, which is what keeps stats from ever going down.
+function rebalanceStats(b) {
+  const cls = findClass(b.startingClass);
+  const keys = STAT_DEFS.map(d => d.key);
+  const phases = b.phases.map(p => ({ label: p.label, level: p.level, stats: Object.assign({}, p.stats) }));
+  let floor = cls ? cls.stats : ABSOLUTE_FLOOR;
+
+  phases.forEach((p, i) => {
+    if (!keys.every(k => p.stats[k] !== undefined)) return; // incomplete: leave alone
+    // The first phase is not a free choice when we know the class.
+    if (i === 0 && cls) {
+      keys.forEach(k => { p.stats[k] = cls.stats[k]; });
+      p.level = cls.level;
+      floor = Object.assign({}, p.stats);
+      return;
+    }
+    keys.forEach(k => { if (p.stats[k] < floor[k]) p.stats[k] = floor[k]; });
+    if (p.level != null) {
+      const floorSum = keys.reduce((n, k) => n + floor[k], 0);
+      const budget = p.level + STAT_TOTAL_OFFSET - floorSum;
+      if (budget >= 0) {
+        const inv = keys.map(k => p.stats[k] - floor[k]);
+        const newInv = inv.some(v => v > 0)
+          ? apportion(inv, budget)
+          : apportion(growthTemplate(b, keys), budget);
+        keys.forEach((k, j) => { p.stats[k] = floor[k] + newInv[j]; });
+        clampTo99(p.stats, keys, floor);
+      }
+    }
+    floor = Object.assign({}, p.stats);
+  });
+  return phases;
+}
+
+// The other reading of the same error: the spread is what you want, and the
+// level milestones were the wrong guess.
+function restateLevels(b) {
+  return b.phases.map(p => {
+    const implied = impliedLevel(p);
+    return { label: p.label, level: implied == null ? p.level : implied, stats: Object.assign({}, p.stats) };
+  });
+}
+
+function summariseFix(before, after) {
+  const lines = [];
+  after.forEach((p, i) => {
+    const was = before[i];
+    if (!was) return;
+    const bits = STAT_DEFS
+      .filter(d => was.stats[d.key] !== p.stats[d.key])
+      .map(d => d.label + " " + was.stats[d.key] + "→" + p.stats[d.key]);
+    const lvl = was.level !== p.level ? "level " + was.level + "→" + p.level : null;
+    if (!bits.length && !lvl) return;
+    lines.push((p.label || "Phase " + i) + ": " + [lvl].concat(bits).filter(Boolean).join(", "));
+  });
+  return lines;
+}
+
+// ---- item reference ----
+// Checks that the gear a build names actually exists, and offers the wiki's
+// location when the build's own is unhelpful. The data lives at the bottom of
+// this file (REF_TALISMANS and friends); this is only the matching.
+//
+// Coverage is deliberately partial and deliberately visible. A category with
+// no reference is reported as "not checked" rather than silently passing —
+// claiming to have checked weapons when we have no weapon list would be worse
+// than saying nothing.
+
+// LLMs produce curly apostrophes and stray spacing; none of that is a
+// different item. Parentheses are deliberately NOT stripped here: "Stamp
+// (Sweep)" and "Stamp (Upward Cut)" are two real, different ashes of war, and
+// folding them together would lose one of them.
+// Accents are folded because the game writes Miséricorde, Great Épée and
+// Varré's Bouquet while the wikis (and anyone typing) usually do not.
+function normName(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// The forms a build might plausibly write for the same item. Indexed as
+// aliases and tried on lookup, so both sides meet in the middle: nobody writes
+// "Ash of War: Bloodhound's Step" in a build, and "Moonveil (katana)" is still
+// Moonveil.
+function keyVariants(name) {
+  const base = normName(name);
+  const out = [base];
+  const push = v => { if (v && out.indexOf(v) < 0) out.push(v); };
+  push(base.replace(/^ash of war:\s*/, ""));
+  push("ash of war: " + base);
+  push(base.replace(/\s*\([^)]*\)\s*$/, ""));
+  push(base.replace(/\s*\+\d+$/, ""));
+  push(base.replace(/\./g, ""));   // "St. Trina's Torch" vs "St Trina's Torch"
+  // nobody writes "Mimic Tear Ashes" in a build; they write "Mimic Tear"
+  push(base.replace(/\s+ashes$/, ""));
+  push(base + " ashes");
+  return out;
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  const cur = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur.slice();
+  }
+  return prev[n];
+}
+
+function indexRef(rows) {
+  const map = new Map();
+  const canon = [];
+  rows.forEach(row => {
+    const [name, loc] = Array.isArray(row) ? row : [row, ""];
+    const entry = { name: String(name).trim(), loc: (loc || "").trim() };
+    if (!entry.name) return;
+    canon.push(entry);
+    // first writer wins, so a real item's own name always beats another
+    // item's alias for it
+    keyVariants(entry.name).forEach(k => { if (k && !map.has(k)) map.set(k, entry); });
+  });
+  map.canon = canon;
+  return map;
+}
+
+// Built on first use so the data block can sit at the bottom of the file,
+// where it is out of the way of the code that reads it.
+let _reference = null;
+function reference() {
+  if (!_reference) {
+    const opt = rows => (rows && rows.length ? indexRef(rows) : null);
+    _reference = {
+      weapons:   opt(REF_WEAPONS),
+      talismans: opt(REF_TALISMANS),
+      physick:   opt(REF_TEARS),
+      spells:    opt(REF_SPELLS),
+      ashes:     opt(REF_ASHES),
+      spirits:   opt(REF_SPIRITS),
+      armor:     null,   // never sourced; see HANDOVER
+      other:     null    // a catch-all cannot be checked against anything
+    };
+  }
+  return _reference;
+}
+
+function lookupItem(catKey, rawName) {
+  const ref = reference()[catKey];
+  if (!ref) return { status: "unchecked" };
+  const n = normName(rawName);
+  if (!n) return { status: "unchecked" };
+
+  // "Erdtree's Favor +2" is its own entry, but "Radagon Icon +1" is not a real
+  // upgrade — the variants cover both without either shadowing the other.
+  let hit = null;
+  for (const v of keyVariants(rawName)) {
+    hit = ref.get(v);
+    if (hit) break;
+  }
+  if (hit) return { status: "ok", ref: hit };
+
+  let best = null, bestD = Infinity;
+  ref.canon.forEach(v => {
+    // compare against the bare name too, so "Bloodhound's Stepp" still finds
+    // "Ash of War: Bloodhound's Step" despite the prefix skewing the distance
+    keyVariants(v.name).forEach(k => {
+      if (Math.abs(k.length - n.length) > Math.max(4, n.length * 0.4)) return;
+      const dist = levenshtein(n, k);
+      if (dist < bestD) { bestD = dist; best = v; }
+    });
+  });
+  if (best && bestD <= Math.max(2, Math.floor(n.length * 0.25))) {
+    return { status: "near", ref: best };
+  }
+  return { status: "unknown" };
+}
+
+// Locations are prose, so this only asks whether they are talking about the
+// same place at all. Anything ambiguous counts as agreement — crying wolf on a
+// correct location would make the whole check untrustworthy.
+const LOC_STOPWORDS = new Set(["the", "and", "for", "from", "near", "with", "drop", "drops",
+  "chest", "corpse", "boss", "buy", "runes", "found", "inside", "behind", "after", "your",
+  "get", "sold", "item", "reward", "dropped", "area", "past"]);
+function locationsAgree(a, b) {
+  const tok = s => new Set(String(s).toLowerCase().split(/[^a-z0-9']+/)
+    .filter(w => w.length > 3 && !LOC_STOPWORDS.has(w)));
+  const A = tok(a), B = tok(b);
+  if (!A.size || !B.size) return true;
+  for (const w of A) if (B.has(w)) return true;
+  return false;
+}
+
+const equipId = (buildId, catKey, name) => buildId + "::" + catKey + "::" + name;
+
+function buildEquipStats(b) {
+  let done = 0, total = 0;
+  EQUIP_DEFS.forEach(d => (b.equipment[d.key] || []).forEach(it => {
+    total++;
+    if (buildChecked[equipId(b.id, d.key, it.name)]) done++;
+  }));
+  return { done, total };
+}
+
+// ---- the prompt you hand to an LLM ----
+// Lives here rather than in the README so it is one click away at the moment
+// you need it, and so it can never drift out of step with the parser above.
+const BUILD_PROMPT = [
+"You are helping me plan an Elden Ring character build.",
+"",
+"Reply with ONE JSON object and NOTHING else: no markdown code fences, no",
+"commentary before or after it. Use exactly these keys:",
+"",
+"{",
+'  "format": "elden-ring-build-v1",',
+'  "name": "short build name",',
+'  "startingClass": "one of the ten starting classes",',
+'  "description": "2-4 sentences: what the build is and why it works",',
+'  "playstyle": "2-4 sentences: how it actually plays in a fight",',
+'  "statProgression": [',
+'    { "phase": "Starting class", "level": 9,',
+'      "stats": { "vigor": 0, "mind": 0, "endurance": 0, "strength": 0,',
+'                 "dexterity": 0, "intelligence": 0, "faith": 0, "arcane": 0 } },',
+'    { "phase": "Phase 1", "level": 30,  "stats": { ...same eight keys... } },',
+'    { "phase": "Phase 2", "level": 60,  "stats": { ... } },',
+'    { "phase": "Phase 3", "level": 90,  "stats": { ... } },',
+'    { "phase": "Phase 4", "level": 120, "stats": { ... } }',
+"  ],",
+'  "equipment": {',
+'    "weapons":    [ { "name": "", "stage": "", "location": "", "notes": "" } ],',
+'    "armor":      [ ... ],',
+'    "talismans":  [ ... ],',
+'    "physick":    [ ... ],',
+'    "spells":     [ ... ],',
+'    "ashesOfWar": [ ... ],',
+'    "spiritAshes":[ ... ],',
+'    "other":      [ ... ]',
+"  }",
+"}",
+"",
+"Rules:",
+"- All five stat phases are required, in that order. The first is the raw",
+"  starting class; the other four are what I should aim for at level 30, 60,",
+"  90 and 120. Every phase lists all eight stats, and no stat ever goes down.",
+"- THE ARITHMETIC MUST HOLD, and I check it. In every phase, the eight stats",
+"  added together must equal exactly the level plus 79. (A level-1 Wretch has",
+"  80 points; each level buys exactly one more.) So level 30 totals 109, level",
+"  60 totals 139, level 90 totals 169 and level 120 totals 199. Add up each",
+"  phase before you answer and fix any that miss.",
+"- No stat may be below the starting class's value for it — you cannot spend a",
+"  stat down. The first phase must be the class's exact starting spread:",
+"    Wretch lv1: 10 10 10 10 10 10 10 10   (VIG MND END STR DEX INT FAI ARC)",
+"    Bandit lv5: 10 11 10 9 13 9 8 14",
+"    Astrologer lv6: 9 15 9 8 12 16 7 9",
+"    Hero lv7: 14 9 12 16 9 7 8 11",
+"    Prophet lv7: 10 14 8 11 10 7 16 10",
+"    Warrior lv8: 11 12 11 10 16 10 8 9",
+"    Prisoner lv9: 11 12 11 11 14 14 6 9",
+"    Samurai lv9: 12 11 13 12 15 9 8 8",
+"    Vagabond lv9: 15 10 11 14 13 9 9 7",
+"    Confessor lv10: 10 13 10 12 12 9 14 9",
+'- "stage" is one of: start, early, mid, late, endgame — when I should have it.',
+'- Use each item\'s EXACT in-game name, spelled as the game spells it. I check',
+"  weapon, talisman, spell, spirit ash and ash of war names against a reference",
+"  list, and anything that does not match exactly is flagged. Do not invent",
+"  items, and do not paraphrase a real one.",
+'- Every entry needs a "location": where in the world I actually pick it up,',
+"  precise enough to find it (region plus landmark, boss drop, merchant, etc).",
+'- Keep "notes" to one short line, and only where it earns its place.',
+"- Use base game plus Shadow of the Erdtree content. No mods, no cut content.",
+"- If a category does not apply, give it an empty array. Do not invent items.",
+"",
+"The build I want: "
+].join("\n");
+
+function makeBuildCheckbox(id) {
+  const label = document.createElement("label");
+  label.className = "item";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = !!buildChecked[id];
+  input.addEventListener("change", () => {
+    if (input.checked) buildChecked[id] = true; else delete buildChecked[id];
+    saveBuildChecked();
+    flashSaved();
+    // counts update in place — re-rendering the view under the pointer would
+    // throw away scroll position and the row you just clicked
+    refreshBuildCounts();
+  });
+  const box = document.createElement("span"); box.className = "box";
+  label.appendChild(input); label.appendChild(box);
+  return label;
+}
+
+// Mirrors refreshCounts() on the tracker side: the progress numbers are the
+// only thing a tick changes, so nothing else is rebuilt.
+function refreshBuildCounts() {
+  const b = builds.find(x => x.id === activeBuild);
+  if (!b) return;
+  const main = document.getElementById("build");
+  const { done, total } = buildEquipStats(b);
+  const fill = main.querySelector(".build-head-row .bar-fill");
+  if (fill) {
+    fill.style.width = total ? (100 * done / total) + "%" : "0%";
+    fill.classList.toggle("complete", total > 0 && done === total);
+  }
+  const count = main.querySelector(".build-head-row .zone-count");
+  if (count) count.textContent =
+    done + " / " + total + " gear (" + (total ? Math.round(100 * done / total) : 0) + "%)";
+
+  main.querySelectorAll(".equip-cat").forEach(box => {
+    const items = b.equipment[box.dataset.cat] || [];
+    const catDone = items.filter(it => buildChecked[equipId(b.id, box.dataset.cat, it.name)]).length;
+    box.classList.toggle("complete", items.length > 0 && catDone === items.length);
+    box.querySelector(".equip-cat-count").textContent = catDone + " / " + items.length;
+  });
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function renderBuildView() {
+  const main = document.getElementById("build");
+  main.innerHTML = "";
+
+  const active = builds.find(b => b.id === activeBuild) || builds[0] || null;
+  if (active && active.id !== activeBuild) { activeBuild = active.id; saveActiveBuild(); }
+
+  // ---- build switcher ----
+  const bar = el("div", "build-bar");
+  builds.forEach(b => {
+    const chip = el("button", "chip" + (active && b.id === active.id ? " active" : ""), b.name);
+    chip.addEventListener("click", () => {
+      activeBuild = b.id; saveActiveBuild(); renderBuildView();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    bar.appendChild(chip);
+  });
+  bar.appendChild(el("span", "spacer"));
+  const addBtn = el("button", "chip alt", builds.length ? "+ Import build" : "Import a build");
+  addBtn.addEventListener("click", () => showBuildImporter());
+  bar.appendChild(addBtn);
+  if (active) {
+    const del = el("button", "chip alt", "Delete this build");
+    del.style.color = "#c98a8a";
+    del.addEventListener("click", () => {
+      if (!confirm('Delete the build "' + active.name + '"? Its checklist ticks go with it.')) return;
+      builds = builds.filter(b => b.id !== active.id);
+      Object.keys(buildChecked).forEach(k => { if (k.startsWith(active.id + "::")) delete buildChecked[k]; });
+      activeBuild = builds.length ? builds[0].id : null;
+      saveBuilds(); saveBuildChecked(); saveActiveBuild();
+      renderBuildView();
+    });
+    bar.appendChild(del);
+  }
+  main.appendChild(bar);
+
+  if (!active) { main.appendChild(buildEmptyState()); return; }
+  renderOneBuild(main, active);
+}
+
+function buildEmptyState() {
+  const card = el("div", "build-card build-empty");
+  card.appendChild(el("span", "build-title", "No build imported yet"));
+  card.appendChild(el("p", null,
+    "A build is your own character plan: what to level, in what order, and what gear to " +
+    "chase along the way. Nothing here ships with the tracker — copy the prompt below, " +
+    "hand it to an LLM with a description of the character you want, and paste the JSON " +
+    "it gives you back in."));
+  const actions = el("div", "build-actions");
+  const copyBtn = el("button", null, "Copy the prompt");
+  copyBtn.addEventListener("click", () => copyPrompt(copyBtn));
+  const importBtn = el("button", null, "Paste or import JSON");
+  importBtn.addEventListener("click", () => showBuildImporter());
+  actions.appendChild(copyBtn); actions.appendChild(importBtn);
+  card.appendChild(actions);
+  const box = el("pre", "prompt-box", BUILD_PROMPT);
+  card.appendChild(box);
+  return card;
+}
+
+function copyPrompt(btn) {
+  const done = () => {
+    const was = btn.textContent;
+    btn.textContent = "Copied";
+    setTimeout(() => { btn.textContent = was; }, 1400);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(BUILD_PROMPT).then(done, () => fallbackCopy(BUILD_PROMPT, done));
+  } else fallbackCopy(BUILD_PROMPT, done);
+}
+// file:// pages do not always get the async clipboard, and this tracker is
+// meant to work from a bare double-click, so keep the old path around.
+function fallbackCopy(text, done) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); done(); } catch (e) { alert("Copy failed — select the prompt text and copy it manually."); }
+  document.body.removeChild(ta);
+}
+
+function showBuildImporter() {
+  const main = document.getElementById("build");
+  const card = el("div", "build-card");
+  card.appendChild(el("span", "build-title", "Import a build"));
+  card.appendChild(el("p", null, "Paste the JSON here, or load it from a file."));
+  const ta = el("textarea", "paste-area");
+  ta.placeholder = '{ "format": "elden-ring-build-v1", "name": "..." }';
+  card.appendChild(ta);
+  const err = el("div", "build-err");
+  err.hidden = true;
+  card.appendChild(err);
+
+  const actions = el("div", "build-actions");
+  const ok = el("button", null, "Import");
+  ok.addEventListener("click", () => {
+    const res = tryImportBuild(ta.value);
+    if (res) { err.textContent = res; err.hidden = false; }
+  });
+  const file = el("button", null, "Load from file");
+  file.addEventListener("click", () => document.getElementById("build-file").click());
+  const copyBtn = el("button", null, "Copy the prompt");
+  copyBtn.addEventListener("click", () => copyPrompt(copyBtn));
+  const cancel = el("button", null, "Cancel");
+  cancel.addEventListener("click", () => renderBuildView());
+  actions.appendChild(ok); actions.appendChild(file);
+  actions.appendChild(copyBtn); actions.appendChild(cancel);
+  card.appendChild(actions);
+
+  main.querySelectorAll(".build-card").forEach(c => c.remove());
+  main.appendChild(card);
+  ta.focus();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// Returns an error string, or null on success (and re-renders).
+function tryImportBuild(text) {
+  const raw = String(text || "").trim()
+    // tolerate a fenced ```json block, since that is what a chat window copies
+    .replace(/^```[a-z]*\s*/i, "").replace(/```$/, "").trim();
+  if (!raw) return "Nothing to import — paste the JSON first.";
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { return "That is not valid JSON. " + e.message; }
+  let b;
+  try { b = normalizeBuild(parsed); }
+  catch (e) { return "That JSON is not a build: " + e.message; }
+
+  const existing = builds.findIndex(x => x.id === b.id);
+  if (existing >= 0) {
+    if (!confirm('A build called "' + builds[existing].name + '" already exists.\n\nReplace it? ' +
+                 'Ticks on equipment it still lists are kept.')) return null;
+    builds[existing] = b;
+  } else {
+    builds.push(b);
+  }
+  activeBuild = b.id;
+  saveBuilds(); saveActiveBuild();
+  renderBuildView();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return null;
+}
+
+function renderOneBuild(main, b) {
+  // ---- summary card ----
+  const card = el("div", "build-card");
+  const head = el("div", "build-head-row");
+  const titleWrap = el("div");
+  titleWrap.style.flex = "1 1 240px";
+  titleWrap.appendChild(el("div", "build-title", b.name));
+  const sub = [b.startingClass && "Starting class: " + b.startingClass, "imported " + b.imported,
+               b.phasesBackup && "stats edited here"].filter(Boolean).join(" · ");
+  titleWrap.appendChild(el("div", "build-class", sub));
+  head.appendChild(titleWrap);
+
+  const stats = buildEquipStats(b);
+  if (stats.total) {
+    const barWrap = el("div", "bar");
+    const fill = el("div", "bar-fill");
+    fill.style.width = (100 * stats.done / stats.total) + "%";
+    fill.classList.toggle("complete", stats.done === stats.total);
+    barWrap.appendChild(fill);
+    head.appendChild(barWrap);
+    head.appendChild(el("span", "zone-count",
+      stats.done + " / " + stats.total + " gear (" + Math.round(100 * stats.done / stats.total) + "%)"));
+  }
+  card.appendChild(head);
+
+  if (b.description || b.playstyle) {
+    const prose = el("div", "build-prose");
+    if (b.description) prose.appendChild(el("p", null, b.description));
+    if (b.playstyle) {
+      prose.appendChild(el("h4", "build-sub", "Playstyle"));
+      prose.appendChild(el("p", null, b.playstyle));
+    }
+    card.appendChild(prose);
+  }
+  main.appendChild(card);
+
+  if (b.phases.length) main.appendChild(renderStatTable(b));
+  const equip = renderEquipment(b);
+  if (equip) main.appendChild(equip);
+}
+
+function renderStatTable(b) {
+  const card = el("div", "build-card");
+  card.appendChild(el("h4", "build-sub", "Stat progression"));
+  const scroll = el("div", "stat-scroll");
+  const table = el("table", "stats");
+
+  const issues = validateBuild(b);
+  const badPhases = new Set(issues.filter(i => i.kind === "error" && i.phase != null).map(i => i.phase));
+
+  // a stat nobody in this build ever invests in is a row of blanks — drop it
+  const rows = STAT_DEFS.filter(d => b.phases.some(p => p.stats[d.key] !== undefined));
+
+  const thead = el("thead");
+  const hr = el("tr");
+  hr.appendChild(el("th", "rowhead", ""));
+  b.phases.forEach((p, i) => {
+    const th = el("th", badPhases.has(i) ? "bad" : null, p.label);
+    if (p.level != null) th.appendChild(el("span", "lvl", "lv " + p.level));
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+
+  const tbody = el("tbody");
+  rows.forEach(d => {
+    const tr = el("tr");
+    tr.appendChild(el("td", "rowhead", d.label));
+    b.phases.forEach((p, i) => {
+      const v = p.stats[d.key];
+      const prev = i > 0 ? b.phases[i - 1].stats[d.key] : undefined;
+      const td = el("td", null, v === undefined ? "—" : String(v));
+      if (i > 0 && v !== undefined && prev !== undefined && v > prev) td.classList.add("up");
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // The number you actually want mid-run: how many points this phase costs,
+  // set against how many levels you have to pay for them with.
+  if (b.phases.length > 1 && rows.length) {
+    const sum = p => rows.reduce((n, d) => n + (p.stats[d.key] || 0), 0);
+    const tr = el("tr", "spend");
+    tr.appendChild(el("td", "rowhead", "Points this phase"));
+    b.phases.forEach((p, i) => {
+      const prev = b.phases[i - 1];
+      const delta = i === 0 ? null : sum(p) - sum(prev);
+      const td = el("td", null, delta == null ? "" : (delta > 0 ? "+" + delta : String(delta)));
+      const levels = (i > 0 && p.level != null && prev.level != null) ? p.level - prev.level : null;
+      if (delta != null && levels != null && delta !== levels) {
+        td.classList.add("bad");
+        td.title = delta + " points for " + levels + " levels";
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+
+  // The check itself, stated as a level rather than as a sum — "these stats
+  // need level 68" is something you can act on; "the total is 147" is not.
+  if (b.phases.some(p => impliedLevel(p) !== null)) {
+    const tr = el("tr", "spend implied");
+    tr.appendChild(el("td", "rowhead", "Level these stats need"));
+    b.phases.forEach(p => {
+      const implied = impliedLevel(p);
+      const td = el("td", null, implied == null ? "?" : String(implied));
+      if (implied != null && p.level != null && implied !== p.level) td.classList.add("bad");
+      else if (implied != null && p.level != null) td.classList.add("ok");
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  scroll.appendChild(table);
+  card.appendChild(scroll);
+  card.appendChild(el("div", "stat-note",
+    "Gold marks a stat that climbs during that phase — that is where the runes go."));
+  card.appendChild(renderChecks(b, issues));
+  return card;
+}
+
+// Set by a repair so the next render can say what it did, then cleared. Tagged
+// with the build id so switching builds does not show someone else's diff, and
+// claimed by kind so the stat card and the equipment card each show their own.
+let lastFix = null;
+
+function takeFixReport(buildId, kinds) {
+  if (!lastFix || lastFix.id !== buildId || kinds.indexOf(lastFix.kind) < 0) return null;
+  const fix = lastFix;
+  lastFix = null;
+  return fix;
+}
+
+function fixReportEl(heading, lines) {
+  const box = el("div", "fix-report");
+  box.appendChild(el("div", "fix-head", heading));
+  if (lines.length) {
+    const ul = el("ul", "fix-list");
+    lines.forEach(l => ul.appendChild(el("li", null, l)));
+    box.appendChild(ul);
+  }
+  return box;
+}
+
+function applyFix(b, kind) {
+  // The as-imported stats are kept the first time only, so Revert always goes
+  // back to the file rather than to the previous repair.
+  const hadBackup = !!b.phasesBackup;
+  if (!hadBackup) b.phasesBackup = JSON.parse(JSON.stringify(b.phases));
+  const before = JSON.parse(JSON.stringify(b.phases));
+  b.phases = kind === "levels" ? restateLevels(b) : rebalanceStats(b);
+  const lines = summariseFix(before, b.phases);
+  // A repair that changed nothing is not an edit: do not leave the build
+  // marked as edited, or offer a Revert that would revert to itself.
+  if (!lines.length && !hadBackup) delete b.phasesBackup;
+  lastFix = { id: b.id, kind, lines };
+  saveBuilds();
+  flashSaved();
+  renderBuildView();
+}
+
+// Renaming an item changes its checklist ID, so any tick has to travel with
+// it — the same rule the tracker lives by, minus the migration table.
+function fixNames(b, fixes) {
+  fixes.forEach(m => {
+    const item = (b.equipment[m.cat] || []).find(it => it.name === m.from);
+    if (!item) return;
+    const oldId = equipId(b.id, m.cat, m.from), newId = equipId(b.id, m.cat, m.to);
+    if (buildChecked[oldId]) { buildChecked[newId] = true; delete buildChecked[oldId]; }
+    item.name = m.to;
+  });
+  lastFix = { id: b.id, kind: "names", lines: fixes.map(m => m.from + " → " + m.to) };
+  saveBuilds();
+  saveBuildChecked();
+  flashSaved();
+  renderBuildView();
+}
+
+function revertFix(b) {
+  b.phases = b.phasesBackup;
+  delete b.phasesBackup;
+  lastFix = { id: b.id, kind: "revert", lines: [] };
+  saveBuilds();
+  flashSaved();
+  renderBuildView();
+}
+
+// Plain-language findings under the table. Errors first: a build with a real
+// arithmetic fault should not have that buried under a note about a missing
+// stat name.
+function renderChecks(b, issues) {
+  const wrap = el("div", "check");
+  const errors = issues.filter(i => i.kind === "error");
+  const warns = issues.filter(i => i.kind === "warn");
+
+  const fix = takeFixReport(b.id, ["stats", "levels", "revert"]);
+  if (fix) {
+    const box = fixReportEl(fix.kind === "revert" ? "Reverted to the imported stats."
+      : fix.kind === "levels" ? "Levels restated to match the stats."
+      : "Stats rebalanced to the levels you asked for.", fix.lines);
+    if (!fix.lines.length && fix.kind !== "revert") {
+      box.appendChild(el("div", "stat-note", "Nothing could be changed automatically."));
+    }
+    // Clicking a repair and seeing errors still listed underneath needs
+    // explaining, or it reads as the button having silently failed.
+    if (fix.kind !== "revert" && errors.length) {
+      box.appendChild(el("div", "stat-note",
+        "Some problems need a decision this tool should not make for you — " +
+        "they are still listed below."));
+    }
+    wrap.appendChild(box);
+  }
+
+  if (!issues.length) {
+    wrap.appendChild(el("div", "check-ok",
+      "✓ Stats check out — every phase is reachable at the level it names."));
+  } else {
+    wrap.appendChild(el("div", "check-head",
+      errors.length
+        ? errors.length + (errors.length === 1 ? " problem" : " problems") + " with this stat plan"
+        : "Could not fully check this stat plan"));
+    const ul = el("ul", "check-list");
+    errors.concat(warns).forEach(i => ul.appendChild(el("li", i.kind, i.text)));
+    wrap.appendChild(ul);
+    if (errors.length) {
+      wrap.appendChild(el("div", "stat-note",
+        "Every Elden Ring character's eight stats add up to exactly their level plus 79, " +
+        "so a phase that misses that is not reachable in game."));
+    }
+  }
+
+  // The two readings of the same fault, offered side by side because only you
+  // know whether the generator got the spread right or the pacing right.
+  const actions = el("div", "fix-actions");
+  if (errors.length) {
+    const a = el("button", null, "Rebalance stats to these levels");
+    a.title = "Keeps the level milestones and rescales each phase's stats to fit, " +
+              "in proportion to how much the build invests in each one.";
+    a.addEventListener("click", () => applyFix(b, "stats"));
+    actions.appendChild(a);
+
+    if (b.phases.some(p => impliedLevel(p) !== null && p.level !== impliedLevel(p))) {
+      const c = el("button", null, "Restate levels to match stats");
+      c.title = "Keeps the stat spread exactly as written and moves the level " +
+                "milestones to where those stats are actually reachable.";
+      c.addEventListener("click", () => applyFix(b, "levels"));
+      actions.appendChild(c);
+    }
+  }
+  if (b.phasesBackup) {
+    const r = el("button", null, "Revert to imported");
+    r.addEventListener("click", () => revertFix(b));
+    actions.appendChild(r);
+  }
+  if (actions.children.length) wrap.appendChild(actions);
+  return wrap;
+}
+
+function renderEquipment(b) {
+  const cats = EQUIP_DEFS.filter(d => (b.equipment[d.key] || []).length);
+  if (!cats.length) return null;
+  const card = el("div", "build-card");
+  card.appendChild(el("h4", "build-sub", "Equipment route"));
+
+  const nameFix = takeFixReport(b.id, ["names"]);
+  if (nameFix) card.appendChild(fixReportEl("Names corrected to their in-game spelling.", nameFix.lines));
+
+  // Build-level coverage line: how much of this build could be checked at all.
+  const checked = cats.filter(d => reference()[d.key]);
+  const unchecked = cats.filter(d => !reference()[d.key]);
+  let flagged = 0, total = 0;
+  checked.forEach(d => b.equipment[d.key].forEach(it => {
+    total++;
+    if (lookupItem(d.key, it.name).status !== "ok") flagged++;
+  }));
+  const cover = el("div", "equip-summary");
+  if (total) {
+    cover.appendChild(el("span", flagged ? "bad" : "ok",
+      flagged ? flagged + " of " + total + " checked items were not recognised."
+              : "All " + total + " checked items exist."));
+  }
+  if (unchecked.length) {
+    cover.appendChild(el("span", "dim",
+      joinList(unchecked.map(d => d.label)) +
+      (unchecked.length === 1 ? " is" : " are") + " not checked — no reference list yet."));
+  }
+  // A near miss is a misspelling of a real item, so it has an unambiguous fix.
+  // An unknown item does not — that one needs a new build, not a rename.
+  const nearMisses = [];
+  checked.forEach(d => b.equipment[d.key].forEach(it => {
+    const c = lookupItem(d.key, it.name);
+    if (c.status === "near") nearMisses.push({ cat: d.key, from: it.name, to: c.ref.name });
+  }));
+  if (nearMisses.length) {
+    const act = el("div", "fix-actions");
+    const btn = el("button", null,
+      nearMisses.length === 1 ? "Correct 1 misspelled name" : "Correct " + nearMisses.length + " misspelled names");
+    btn.title = nearMisses.map(m => m.from + " → " + m.to).join("\n");
+    btn.addEventListener("click", () => fixNames(b, nearMisses));
+    act.appendChild(btn);
+    cover.appendChild(act);
+  }
+  if (cover.children.length) card.appendChild(cover);
+
+  const grid = el("div", "equip-grid");
+
+  cats.forEach(d => {
+    const items = b.equipment[d.key];
+    const box = el("div", "equip-cat");
+    box.dataset.cat = d.key;
+    const done = items.filter(it => buildChecked[equipId(b.id, d.key, it.name)]).length;
+    if (done === items.length) box.classList.add("complete");
+    const h = el("div", "equip-cat-head");
+    h.appendChild(el("span", "equip-cat-name", d.label));
+    h.appendChild(el("span", "equip-cat-count", done + " / " + items.length));
+    box.appendChild(h);
+
+    // Say what was checked, per category, so "no flags" never gets mistaken
+    // for "verified" in a category that has no reference data.
+    const checks = items.map(it => lookupItem(d.key, it.name));
+    if (!reference()[d.key]) {
+      box.appendChild(el("div", "equip-cover dim", "not checked — no reference list"));
+    } else {
+      const bad = checks.filter(c => c.status !== "ok").length;
+      box.appendChild(el("div", "equip-cover" + (bad ? " bad" : ""),
+        bad ? bad + " of " + items.length + " not recognised"
+            : "all " + items.length + " verified"));
+    }
+
+    // group by stage, in route order; anything unstaged trails the end, and a
+    // category where nothing is staged renders as a plain list
+    const groups = [];
+    STAGE_DEFS.forEach(s => {
+      const list = items.filter(it => it.stage === s.key);
+      if (list.length) groups.push({ label: s.label, list });
+    });
+    const unstaged = items.filter(it => !it.stage);
+    if (unstaged.length) groups.push({ label: groups.length ? "Unsorted" : null, list: unstaged });
+
+    groups.forEach(g => {
+      if (g.label) box.appendChild(el("div", "equip-stage", g.label));
+      g.list.forEach(it => {
+        const id = equipId(b.id, d.key, it.name);
+        const label = makeBuildCheckbox(id);
+        const name = el("span", "name");
+        name.appendChild(document.createTextNode(it.name));
+
+        const chk = lookupItem(d.key, it.name);
+        if (chk.status === "near") {
+          label.classList.add("suspect");
+          name.appendChild(el("span", "equip-flag", "no such item — did you mean " + chk.ref.name + "?"));
+        } else if (chk.status === "unknown") {
+          label.classList.add("suspect");
+          name.appendChild(el("span", "equip-flag", "not in the reference list"));
+        }
+
+        if (it.location) name.appendChild(el("span", "loc equip-meta", it.location));
+        // The wiki location is shown only when the build's own does not look
+        // like the same place; otherwise it just repeats what is already there.
+        if (chk.status === "ok" && chk.ref.loc) {
+          if (!it.location || !locationsAgree(it.location, chk.ref.loc)) {
+            name.appendChild(el("span", "equip-ref", "wiki: " + chk.ref.loc));
+          } else {
+            label.title = "wiki: " + chk.ref.loc;
+          }
+        }
+        if (it.notes) name.appendChild(el("span", "equip-note", it.notes));
+        label.appendChild(name);
+        box.appendChild(label);
+      });
+    });
+    grid.appendChild(box);
+  });
+  card.appendChild(grid);
+  return card;
+}
+
+document.getElementById("view-build").addEventListener("click", () => setView("build"));
+document.getElementById("build-file").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const err = tryImportBuild(reader.result);
+    if (err) alert(err);
+    e.target.value = "";
+  };
+  reader.readAsText(file);
 });
 
 // ============================================================================
@@ -2645,6 +4033,7 @@ const REF_TEARS = [
 
 migrateChecked();
 build();
+renderBuildView();
 setView(view);
 </script>
 </body>

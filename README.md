@@ -3,7 +3,8 @@
 A single-file, offline completion tracker for Elden Ring and Shadow of the Erdtree.
 Everything you check off is saved in your browser — no account, no server, no network.
 
-**304 dungeons and bosses across 37 zones, plus 295 quest steps across 34 questlines.**
+**314 dungeons and bosses across 37 zones, plus 295 quest steps across 34 questlines**
+— and a Build tab for your own character plan.
 
 ## Running it
 
@@ -21,7 +22,7 @@ than the `file://` protocol.
 | Category | Notes |
 | --- | --- |
 | Dungeons | 104 — each is a block with a "cleared" checkbox in its header |
-| Bosses | 200 — field, evergaol and night bosses included |
+| Bosses | 210 — field, evergaol and night bosses included |
 | Quests | 295 steps across 34 questlines, in a separate Quests view |
 
 Zones are ordered by a recommended progression route rather than alphabetically.
@@ -36,6 +37,81 @@ checkboxes turned out to be more bookkeeping than the tracker was worth.
 
 If you ever want one back, the data is in the v7 commit, and old ticks were never
 deleted from `localStorage` — see the note in `HANDOVER.md`.
+
+## The Build tab
+
+A third view, next to Zones and Quests, holding your own character plan: a name
+and description, what to level toward at level 30 / 60 / 90 / 120, and a
+checklist of gear to collect with locations.
+
+Nothing ships with the tracker — you import a build as JSON. The Build tab shows
+the exact prompt to hand an LLM, with a **Copy the prompt** button; paste the
+answer back into the tab (or load it from a `.json` file) and it renders.
+
+- Several builds can live side by side; chips at the top switch between them.
+- Re-importing a build with the same name replaces it and **keeps your ticks**
+  on any gear it still lists, so a corrected plan costs you nothing.
+- Builds and their checklists ride along in **⋯ → Export backup**.
+
+### Stat checking
+
+Generated builds are frequently wrong about arithmetic, so the tab checks them.
+Every Elden Ring character's eight stats add up to exactly **level + 79** — a
+level-1 Wretch holds 80 points and each level buys one more — so any phase that
+misses that total is not reachable in game.
+
+The stat table shows a **Level these stats need** row beside the level each
+phase claims, flags the phases that disagree, and lists what is wrong in plain
+language underneath. It also catches stats spent below the starting class's
+values, stats that go down between phases, a first phase that is not the named
+class's real spread, levels that do not increase, and values above 99.
+
+A failing build still imports and still renders — the tool reports, it does not
+refuse. The prompt in the tab states the arithmetic rule and includes all ten
+class stat blocks, which is the cheapest way to get correct builds in the first
+place.
+
+### Fixing a broken stat plan
+
+An overspent phase has two correct fixes, so both are offered as buttons under
+the findings:
+
+- **Rebalance stats to these levels** keeps your level 30 / 60 / 90 / 120
+  milestones and rescales each phase's stats to fit — in proportion to how much
+  the build invests in each stat, so a Dexterity/Intelligence build stays one.
+- **Restate levels to match stats** keeps the spread exactly as written and
+  moves the milestones to where those stats are actually reachable.
+
+Either way the tool tells you exactly what it changed, and **Revert to imported**
+brings back the original file. Nothing is ever repaired automatically, and a
+phase with no legal fix (a level-5 Confessor, say) is left alone and stays
+flagged rather than guessed at. Equipment ticks are never touched.
+
+The importer is deliberately forgiving about key names, nesting and stray
+markdown fences, since no two LLM answers are shaped quite alike.
+
+### Equipment checking
+
+The tab also checks that the gear a build names actually exists, against 1,083
+real item names embedded in the page:
+
+| Checked | Not checked |
+| --- | --- |
+| Weapons (479, including shields, staves, seals and bows) | Armor |
+| Spells (213), Talismans (154) | "Other" |
+| Ashes of War (116), Spirit Ashes (84), Crystal Tears (37) | |
+
+An invented item is flagged on its row. A misspelling of a real one is flagged
+with the correct name and a button to apply it — renaming keeps your checklist
+tick. Where the reference knows the location and your build's looks like a
+different region, the wiki's is shown alongside; matching regions stay quiet.
+
+**Categories with no reference list say "not checked" rather than passing
+silently**, so an unflagged item always means it was actually verified.
+
+Name matching is forgiving about the spellings that differ in practice: accents
+(`Miséricorde` / `Misericorde`), the optional `Ash of War: ` prefix, a trailing
+` Ashes` on spirit ashes, `St.` versus `St`, and `+1` / `+2` suffixes.
 
 ## Saving and backups
 
