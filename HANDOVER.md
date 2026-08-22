@@ -910,6 +910,58 @@ A trap worth recording: `parseCSV` used to drop any row without a `name`
 column, which silently emptied all three damage tables — they are keyed by id
 and level. It now keeps any row with content.
 
+### Affinities, 2026-08-22
+
+All twelve infusions are in, 2,736 rows — 228 infusible weapons times twelve —
+so `Blood Uchigatana` now has a real attack rating, real scaling letters and
+its real bleed instead of a disclaimer.
+
+**They are keyed by base weapon id plus affinity id, not by name.** The game
+files name them irregularly: `Celebrant's Heavy Sickle` puts the affinity in
+the middle rather than in front. But `id = baseId + affinityId` holds for all
+2,736 rows without a single exception, which `damage-sync.js` checks and
+refuses to write without. Note the *lookup* still works by prefix, because
+nobody writes "Celebrant's Heavy Sickle" in a build — they write "Heavy
+Celebrant's Sickle", and stripping the prefix finds the base.
+
+An affinity replaces the whole row, not a multiplier on the standard one: base
+attack, scaling coefficients, growth curve ids, reinforce track and passive all
+change. `attackRating()` swaps in the affinity row when one is named, and
+`affinityProfile()` derives the letters and passive at max upgrade rather than
+storing them, so they cannot drift from the numbers.
+
+`DAMAGE_CSV.tiers` now carries the game's coefficient-to-letter thresholds so
+those letters can be derived at runtime.
+
+**The finding worth keeping: raw AR flatters split damage.** Lightning
+Uchigatana reads 622 against Keen's 516 on a dexterity spread, which looks
+decisive and is misleading — it is 302 physical plus 320 lightning, and flat
+defence is subtracted once per damage type, so a split weapon pays that toll
+twice. This is not a bug; the base row really is 110 physical *and* 110
+lightning. Because the tool now prints a number that invites comparison, the
+row says so: **"split damage — raw AR flatters it"** whenever a weapon has more
+than one damage type. If AR is ever used for ranking, this is the correction
+that has to go in first, or the optimiser will recommend elemental infusions
+for everything.
+
+`DAMAGE_CSV.affinitySummary` describes each infusion, and both halves are
+derived **relative to the uninfused weapon** rather than in absolute terms.
+That distinction matters: most infusible weapons already scale with Strength
+and plenty already bleed, so counting absolutes made every affinity look
+identical — the first version reported "Bleed" as the passive of all twelve.
+
+The summary goes into the prompt, generated on use rather than at load, because
+`DAMAGE_CSV` is declared below `BUILD_PROMPT_BODY` and a load-time reference
+would hit the temporal dead zone. It costs about 1KB and tells the model which
+infusions suit which stats.
+
+**Size.** index.html is now 705KB, of which the damage tables are ~355KB. That
+is fine to parse and gzips to a fraction of it, but it is the point at which
+"one self-contained file" starts to be a real cost rather than a free property.
+The affinity rows are deliberately *not* in the CSV download: 2,736 extra rows
+would crowd the prompt without helping a model choose, which is the same
+reasoning that made the download a download.
+
 ## 7. Repo notes
 
 - Git identity is set **repo-locally** (`Paraiga` /

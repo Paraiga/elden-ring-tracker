@@ -161,8 +161,20 @@ it compares across weapons in a way letters cannot. Two-handing (which grants
 50% more Strength) and unmet requirements are both modelled — Giant-Crusher
 needs 60 Strength, so at 40 it reads 227, and two-handed it reads 747.
 
-Infused weapons show no attack rating on purpose: an affinity rewrites both
-base damage and scaling, and those numbers are not in the table yet.
+**Infusions are priced too.** All twelve affinities are in, so you can put five
+versions of the same katana in a build and compare them directly:
+
+| | scaling | AR |
+| --- | --- | --- |
+| Heavy Uchigatana | A Str | 371 |
+| Uchigatana | D Str, C Dex · Bleed 45 | 473 |
+| Blood Uchigatana | C Str, B Dex, D Arc · Bleed 57 | 480 |
+| Occult Uchigatana | E Str, D Dex, B Arc · Bleed 38 | 533 |
+| Lightning Uchigatana | E Str, C Dex · split damage | 622 |
+
+That last row is why the tab flags split damage. Flat defence is subtracted
+once per damage type, so a weapon that splits pays it twice — its raw AR looks
+better than it plays, and the row says so.
 
 **And the tab checks that your build can actually wield its own weapons.** If
 the final phase never reaches 23 Intelligence, a plan built around Moonveil is

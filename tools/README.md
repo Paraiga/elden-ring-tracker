@@ -87,6 +87,11 @@ broken rather than drifting.
 Getting this wrong is worse than not having it: a wrong AR is a confident
 number and nothing downstream can tell.
 
+It also emits the twelve affinities, 2,736 rows. Those are keyed by **base
+weapon id plus affinity id**, never by name — the game files write
+`Celebrant's Heavy Sickle` with the affinity in the middle. That relation holds
+for every row, and the script refuses to write if any row fails it.
+
 ## selftest.js
 
 Loads the page's own script into Node and checks that the CSV the Build tab

@@ -373,37 +373,66 @@ Consequences worth knowing:
   and scaling both, those rows are not carried, and a wrong number would be
   worse than none.
 
+## Done (v21) — affinities
+- **All twelve infusions, 2,736 rows.** `Blood Uchigatana` now has a real
+  attack rating, real scaling letters and its real bleed, where before it got a
+  disclaimer. Five infusions of one weapon sit side by side and compare
+  directly:
+
+      Heavy Uchigatana      A Str                    AR 371
+      Uchigatana            D Str, C Dex, Bleed 45   AR 473
+      Blood Uchigatana      C Str, B Dex, D Arc      AR 480   Bleed 57
+      Occult Uchigatana     E Str, D Dex, B Arc      AR 533   Bleed 38
+      Lightning Uchigatana  E Str, C Dex             AR 622   split
+
+- Keyed by **base weapon id plus affinity id**, because the game files name
+  infusions irregularly — `Celebrant's Heavy Sickle` puts the affinity in the
+  middle. That relation holds for all 2,736 rows and the tool refuses to write
+  without it.
+- An infusion replaces the whole row — base attack, scaling, growth curves,
+  reinforce track and passive — so `attackRating()` swaps it in wholesale, and
+  the letters are derived at max upgrade rather than stored, so they cannot
+  drift from the numbers.
+- **Raw AR flatters split damage, and the tool now says so.** Lightning
+  Uchigatana reads 622 against Keen's 516, which looks decisive and is
+  misleading: it is 302 physical plus 320 lightning, and flat defence is
+  subtracted once per damage type, so a split weapon pays it twice. Any row
+  with more than one damage type carries the caveat.
+- The prompt gained a derived table of what each infusion does — which stats it
+  scales, what it splits into, what status it adds — for about 1KB. Both halves
+  are stated *relative to the uninfused weapon*, because most infusible weapons
+  already scale with Strength and plenty already bleed.
+
 ### Where this was heading
-The five steps sketched on 2026-08-22 are done or deliberately dropped:
-**(1) stat maths** ✔, **(2) item existence and locations** ✔, **(3) grounded
-generation** ✔, (4) in-tool generation via an API key — **not doing**,
-**(5) attack rating** ✔.
+Ranking is the next thing, and it is now mostly a matter of deciding what
+"best" means rather than of getting more data.
 
-What is left is the inversion the AR work makes possible.
+The tool can already price any weapon-affinity pair at any stat spread. Turning
+that into a ranking needs two pieces:
 
-**Affinities first.** 2,964 weapon-affinity rows would make AR work for
-"Blood Uchigatana", and more importantly make affinity choice comparable —
-which is most of what optimising a build actually means. This is a data import
-using machinery that already exists, and it is the single highest-value thing
-left.
+1. **A stat solver.** The growth curves are monotonic and concave, so greedy
+   marginal-return allocation finds the best spread for a given weapon in
+   microseconds; 3,215 weapon-affinity pairs at level 150 is seconds of
+   offline JS.
+2. **A better objective than raw AR**, or the ranking will recommend elemental
+   infusions for everything. At minimum, discount split damage; properly,
+   compute against a representative enemy's defences and negations. The dump
+   has the defence tables, and `ar.test.ts` in the source project has a
+   `calculateDefenseMultiplier` worth porting alongside.
 
-**Then ranking.** With AR computable, the tool can solve for the best stat
-spread at a level and rank weapons for it, rather than checking a build someone
-else wrote. The curves are monotonic and concave, so greedy marginal-return
-allocation gets there in microseconds; ranking every weapon-affinity pair at
-level 120 is seconds of offline JS.
+**Then the prompt changes shape.** Today it carries a 261KB attachment and the
+model chooses. Once the tool can rank, the prompt should carry a computed
+shortlist — twenty candidates with real numbers, already filtered to what the
+build can actually wield — and the model does what it is good at: choosing
+among good options, writing the route, and making it cool.
 
-**Then the prompt changes shape.** Today it carries a 261KB attachment. Once
-the tool can rank, it should carry a computed shortlist — twenty candidates
-with real numbers — and let the model do what it is good at: choosing among
-good options, writing the route, and making it cool. That is the point at which
-this stops being a build checker and becomes a build generator, and the point
-at which the CSV stops growing.
+Still absent, and now the whole list: talisman effects are prose rather than
+numbers (needs `SpEffectParam`), there are no motion values so this is per-hit
+AR rather than DPS, and nothing says which weapons an Ash of War fits.
 
-Smaller gaps, unchanged: talisman effects are prose rather than numbers (needs
-`SpEffectParam`), status buildup does not scale with Arcane, there are no
-motion values so this is per-hit AR rather than DPS, and nothing says which
-weapons an Ash of War fits.
+One cost worth watching: index.html is 705KB now, ~355KB of it damage tables.
+Still one self-contained file with no build step, but that property has stopped
+being free.
 
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the

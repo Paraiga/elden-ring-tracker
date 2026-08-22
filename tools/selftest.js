@@ -49,7 +49,8 @@ const localStorage = {
 const start = html.indexOf("<script>"), end = html.lastIndexOf("</script>");
 const api = new Function("document", "localStorage", "window", "ResizeObserver", "navigator",
   html.slice(start + 8, end) +
-  "\nreturn { itemsCsv, parseCSV, lookupItem, REF_CSV, EQUIP_DEFS, attackRating, damage };"
+  "\nreturn { itemsCsv, parseCSV, lookupItem, REF_CSV, DAMAGE_CSV, EQUIP_DEFS," +
+  " attackRating, damage, affinityProfile };"
 )(document, localStorage,
   { addEventListener: noop, matchMedia: () => ({ matches: false, addEventListener: noop }) },
   function () { return { observe: noop, disconnect: noop }; },
@@ -149,6 +150,36 @@ near(Math.floor(gc1.total), 227, 2, "Giant-Crusher one-handed at 40 Str");
 near(Math.floor(gc2.total), 747, 2, "Giant-Crusher two-handed at 40 Str");
 if (!gc1.unmet.includes("str")) fail("Giant-Crusher at 40 Str should report str unmet");
 if (gc2.unmet.length) fail("Giant-Crusher two-handed at 40 Str should meet its requirement");
+
+// ---- 5b. affinities ----
+// 228 infusible weapons times twelve infusions, and each one has to change the
+// answer in the direction the game says it does.
+console.log("\naffinities:");
+const affRows = api.parseCSV(api.DAMAGE_CSV.affinities);
+console.log("  " + "rows".padEnd(42), affRows.length);
+if (affRows.length !== 2736) fail("expected 2736 affinity rows, got " + affRows.length);
+
+const uchi = weapons["Uchigatana"];
+const dexArc = { vig: 60, mnd: 20, end: 30, str: 18, dex: 50, int: 9, fai: 9, arc: 45 };
+const arOf = a => Math.floor(api.attackRating(uchi, dexArc, a ? { affinity: a } : {}).total);
+const std = arOf("");
+console.log("  " + "Uchigatana standard / Keen / Heavy".padEnd(42),
+  std + " / " + arOf("Keen") + " / " + arOf("Heavy"));
+// Keen scales with Dexterity and this spread has 50 of it; Heavy drops Dex
+// scaling entirely, so it must lose.
+if (arOf("Keen") <= std) fail("Keen should beat standard on a 50 Dex spread");
+if (arOf("Heavy") >= std) fail("Heavy should lose to standard on a 50 Dex spread");
+// Occult scales with Arcane, which this spread has 45 of.
+if (arOf("Occult") <= std) fail("Occult should beat standard on a 45 Arcane spread");
+
+// Infusions rewrite the passive: Blood raises bleed, Cold replaces it with frost.
+const prof = a => api.affinityProfile(uchi, a);
+console.log("  " + "passive: standard / Blood / Cold".padEnd(42),
+  "Bleed 45 / " + prof("Blood").passive + " / " + prof("Cold").passive);
+if (!/^Bleed/.test(prof("Blood").passive)) fail("Blood Uchigatana should carry bleed");
+if (!/^Frost/.test(prof("Cold").passive)) fail("Cold Uchigatana should carry frost");
+if (!prof("Heavy").scales.some(s => s.label === "Str")) fail("Heavy should scale with Strength");
+if (prof("Heavy").scales.some(s => s.label === "Dex")) fail("Heavy should drop Dexterity scaling");
 
 const covered = api.parseCSV(api.REF_CSV.weapons).filter(r => api.attackRating(r, spread(40))).length;
 console.log("  " + "weapons with an attack rating".padEnd(42), covered + "/" + Object.keys(weapons).length);

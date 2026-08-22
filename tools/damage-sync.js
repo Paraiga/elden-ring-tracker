@@ -92,15 +92,85 @@ Object.keys(reg.reinforceTypes).forEach(id => {
   });
 });
 
-const weaponLines = rows.map(w => {
+const STATUS = { 5: "Poison", 6: "Scarlet Rot", 7: "Bleed", 8: "Frost", 9: "Sleep", 10: "Madness", 11: "Death Blight" };
+const passiveOf = w => {
+  let out = "";
+  (w.statusSpEffectParamIds || []).filter(Boolean).forEach(id => {
+    const p = reg.statusSpEffectParams[id];
+    if (!p) return;
+    Object.keys(p).forEach(k => { if (STATUS[k]) out = STATUS[k] + " " + p[k]; });
+  });
+  return out;
+};
+
+const damageFields = w => {
   const cg = DAMAGE_TYPES.map(d =>
     (w.calcCorrectGraphIds && w.calcCorrectGraphIds[d] !== undefined)
       ? w.calcCorrectGraphIds[d] : DEFAULT_DAMAGE_GRAPH);
-  return [qcsv(w.name), w.attackElementCorrectId, w.reinforceTypeId]
+  return [w.attackElementCorrectId, w.reinforceTypeId]
     .concat(cg)
     .concat(DAMAGE_TYPES.map(d => trim((w.attack && w.attack[d]) || 0)))
-    .concat(ATTRS.map(a => trim((w.attributeScaling && w.attributeScaling[a]) || 0)))
-    .join(",");
+    .concat(ATTRS.map(a => trim((w.attributeScaling && w.attributeScaling[a]) || 0)));
+};
+
+const weaponLines = rows.map(w => [qcsv(w.name)].concat(damageFields(w)).join(","));
+
+// ---- affinity variants ----
+// The game files name these irregularly — "Celebrant's Heavy Sickle" puts the
+// affinity in the middle — so they are keyed by the base weapon's id plus the
+// affinity id, which holds for all 2,736 rows without exception, rather than
+// by parsing names.
+const AFFINITY_NAMES = {
+  1: "Heavy", 2: "Keen", 3: "Quality", 4: "Fire", 5: "Flame Art", 6: "Lightning",
+  7: "Sacred", 8: "Magic", 9: "Cold", 10: "Poison", 11: "Blood", 12: "Occult"
+};
+const byId = {};
+reg.weapons.forEach(w => { byId[w.id] = w; });
+
+const affinityRows = reg.weapons.filter(w => w.affinityId > 0);
+const affinityLines = [];
+const unresolved = [];
+affinityRows.forEach(w => {
+  const base = byId[w.id - w.affinityId];
+  if (!base || base.affinityId !== 0) { unresolved.push(w.name); return; }
+  affinityLines.push([qcsv(base.name), AFFINITY_NAMES[w.affinityId]]
+    .concat(damageFields(w))
+    .concat([qcsv(passiveOf(w))]).join(","));
+});
+if (unresolved.length) {
+  console.error("REFUSING to write: " + unresolved.length +
+    " affinity rows do not resolve to a standard base weapon.");
+  process.exit(1);
+}
+
+// What each affinity does, derived from the data rather than remembered:
+// which attributes it scales with across every weapon that can take it, and
+// what status it adds.
+const affinitySummary = Object.keys(AFFINITY_NAMES).map(id => {
+  const variants = affinityRows.filter(w => w.affinityId === +id);
+  const half = variants.length / 2;
+  const majority = fn => variants.filter(fn).length > half;
+
+  // Both of these are *relative to the uninfused weapon*. Counting absolutes
+  // gets it wrong: most weapons that can be infused already scale with
+  // Strength, and plenty already bleed, so every affinity would look the same.
+  const scaled = ATTRS.filter(a => majority(w => {
+    const base = byId[w.id - w.affinityId];
+    return (w.attributeScaling && w.attributeScaling[a] || 0) >
+           (base.attributeScaling && base.attributeScaling[a] || 0) + 1e-9;
+  }));
+  const added = {};
+  variants.forEach(w => {
+    const base = byId[w.id - w.affinityId];
+    const mine = passiveOf(w).split(" ")[0];
+    const theirs = passiveOf(base).split(" ")[0];
+    if (mine && mine !== theirs) added[mine] = (added[mine] || 0) + 1;
+  });
+  const status = Object.keys(added).filter(k => added[k] > half)
+    .sort((a, b) => added[b] - added[a])[0] || "";
+  const dmg = DAMAGE_TYPES.filter(d => majority(w => (w.attack && w.attack[d]) > 0))
+    .map(d => ["physical", "magic", "fire", "lightning", "holy"][d]);
+  return [AFFINITY_NAMES[id], scaled.join("/"), dmg.join("/"), status].map(qcsv).join(",");
 });
 
 // ----------------------------------------------------------- verification ----
@@ -205,7 +275,8 @@ if (broken) {
 }
 
 console.log("\nrows: graphs=" + graphLines.length + " aec=" + aecLines.length +
-  " reinforce=" + reinforceLines.length + " weapons=" + weaponLines.length);
+  " reinforce=" + reinforceLines.length + " weapons=" + weaponLines.length +
+  " affinities=" + affinityLines.length);
 
 if (DRY) { console.log("--dry: nothing written"); process.exit(0); }
 
@@ -240,7 +311,25 @@ const block = [
   reinforceLines.join(NL) + "`,",
   "",
   "weapons: `name,aec,rt,cg0,cg1,cg2,cg3,cg4,atk0,atk1,atk2,atk3,atk4,sStr,sDex,sInt,sFai,sArc",
-  weaponLines.join(NL) + "`",
+  weaponLines.join(NL) + "`,",
+  "",
+  "// The twelve infusions, keyed by the base weapon they apply to. Kept here",
+  "// rather than in REF_CSV because they are for computing, not for naming: a",
+  "// build says \"Blood Uchigatana\", and 2,736 extra rows in the download would",
+  "// crowd the prompt without helping it choose.",
+  "affinities: `base,affinity,aec,rt,cg0,cg1,cg2,cg3,cg4,atk0,atk1,atk2,atk3,atk4,sStr,sDex,sInt,sFai,sArc,passive",
+  affinityLines.join(NL) + "`,",
+  "",
+  "// The game's own coefficient-to-letter thresholds, so an infused weapon's",
+  "// scaling letters can be derived at runtime rather than stored per row.",
+  "tiers: `min,label",
+  reg.scalingTiers.map(t => trim(t.min) + "," + t.label).join(NL) + "`,",
+  "",
+  "// What each infusion does, derived from the rows above and stated relative",
+  "// to the uninfused weapon: the attributes it raises the scaling of on most",
+  "// weapons, the damage it deals, and the status it adds.",
+  "affinitySummary: `affinity,scalesWith,damage,passive",
+  affinitySummary.join(NL) + "`",
   "",
   "};",
   ""
