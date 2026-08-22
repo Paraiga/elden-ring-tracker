@@ -49,7 +49,7 @@ const localStorage = {
 const start = html.indexOf("<script>"), end = html.lastIndexOf("</script>");
 const api = new Function("document", "localStorage", "window", "ResizeObserver", "navigator",
   html.slice(start + 8, end) +
-  "\nreturn { itemsCsv, parseCSV, lookupItem, REF_CSV, EQUIP_DEFS };"
+  "\nreturn { itemsCsv, parseCSV, lookupItem, REF_CSV, EQUIP_DEFS, attackRating, damage };"
 )(document, localStorage,
   { addEventListener: noop, matchMedia: () => ({ matches: false, addEventListener: noop }) },
   function () { return { observe: noop, disconnect: noop }; },
@@ -112,6 +112,47 @@ console.log("\naffinities:");
   console.log("  " + name.padEnd(26), got);
   if (got !== want) fail(name + ": expected " + want + ", got " + got);
 });
+
+// ---- 5. attack rating ----
+// Pinned values, not just "it returns a number". A damage formula that is
+// slightly wrong still produces confident numbers, so these are the anchors:
+// the curve's documented soft caps, a weapon's own base attack, and the
+// two-handing and unmet-requirement rules, each of which is separately visible.
+console.log("\nattack rating:");
+const weapons = {};
+api.parseCSV(api.REF_CSV.weapons).forEach(r => weapons[r.name] = r);
+const spread = k => ({ vig: 60, mnd: 20, end: 30, str: k, dex: k, int: k, fai: k, arc: k });
+const near = (got, want, tol, what) => {
+  const ok = Math.abs(got - want) <= tol;
+  console.log("  " + what.padEnd(42), got + (ok ? "" : "  (expected ~" + want + ")"));
+  if (!ok) fail(what + ": got " + got + ", expected ~" + want);
+};
+
+// The default damage curve's soft caps are documented game behaviour.
+const g = api.damage().graphs["0"];
+near(+g[18].toFixed(3), 0.25, 0.001, "growth curve at 18");
+near(+g[60].toFixed(3), 0.75, 0.001, "growth curve at 60");
+near(+g[80].toFixed(3), 0.9, 0.001, "growth curve at 80");
+
+// Base attack at +0 is the weapon's own listed value.
+const uchi0 = api.attackRating(weapons["Uchigatana"], { str: 11, dex: 15 }, { upgrade: 0 });
+near(uchi0.base, 115, 0, "Uchigatana +0 base attack");
+
+near(Math.floor(api.attackRating(weapons["Uchigatana"], spread(40)).total), 491, 2,
+  "Uchigatana +25 at 40/40");
+
+// Giant-Crusher needs 60 Str. At 40 the requirement is unmet and every damage
+// type it scales is cut to 60%; two-handing makes 40 count as 60 and lifts it.
+const gc1 = api.attackRating(weapons["Giant-Crusher"], spread(40));
+const gc2 = api.attackRating(weapons["Giant-Crusher"], spread(40), { twoHand: true });
+near(Math.floor(gc1.total), 227, 2, "Giant-Crusher one-handed at 40 Str");
+near(Math.floor(gc2.total), 747, 2, "Giant-Crusher two-handed at 40 Str");
+if (!gc1.unmet.includes("str")) fail("Giant-Crusher at 40 Str should report str unmet");
+if (gc2.unmet.length) fail("Giant-Crusher two-handed at 40 Str should meet its requirement");
+
+const covered = api.parseCSV(api.REF_CSV.weapons).filter(r => api.attackRating(r, spread(40))).length;
+console.log("  " + "weapons with an attack rating".padEnd(42), covered + "/" + Object.keys(weapons).length);
+if (covered !== Object.keys(weapons).length) fail("only " + covered + " weapons produced an attack rating");
 
 console.log("\n" + (failures ? failures + " FAILURE(S)" : "all checks passed"));
 process.exit(failures ? 1 : 0);

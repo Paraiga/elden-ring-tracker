@@ -12,6 +12,7 @@ Requires Node. No packages to install.
 ```bash
 node tools/params-sync.js    # weapon stats from the game's own params
 node tools/wiki-sync.js      # everything else, from eldenring.wiki.gg
+node tools/damage-sync.js    # the tables needed to compute attack rating
 node tools/selftest.js       # must pass before committing
 ```
 
@@ -67,6 +68,24 @@ Every one of these silently produced *wrong* data rather than an error:
   set to null, or its pieces get filed under the previous one.
 - **Do not route pages through a summarising model.** It was tried once; it
   truncated and invented entries. Parse the raw wikitext.
+
+## damage-sync.js
+
+Extracts the four tables attack rating needs — growth curves, which attributes
+scale which damage type, per-upgrade multipliers, and base attack — from the
+same regulation dump `params-sync.js` downloads. Run it after that.
+
+**It verifies itself against a second source.** It recomputes every weapon's +0
+base attack and +0 scaling letters from the numbers it is about to write and
+checks them against the wiki infobox values `wiki-sync.js` cached. Those are
+the two halves of the formula's input, independently sourced. Expect about
+97% exact agreement on base attack and 99% on scaling letters; the residual is
+patch drift plus bows and shields, which the wiki writes up differently. It
+refuses to write above 10% disagreement, which would mean the extraction is
+broken rather than drifting.
+
+Getting this wrong is worse than not having it: a wrong AR is a confident
+number and nothing downstream can tell.
 
 ## selftest.js
 

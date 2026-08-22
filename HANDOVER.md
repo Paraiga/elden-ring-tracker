@@ -851,6 +851,65 @@ Two consequences worth keeping:
   says "scaling and passive change with the affinity" instead. If the twelve
   non-standard affinities are ever imported, this is the line to revisit.
 
+### Attack rating, 2026-08-22
+
+The tab computes AR now. Scaling letters say *whether* a stat helps; AR says
+*how much*, which is the difference between "B in Dexterity" and a number you
+can compare across weapons.
+
+    AR(type) = base(type) x (1 + SUM over stats of scaling x growth(stat))
+
+`base` is the weapon's attack for that damage type times its reinforce
+multiplier at the upgrade level; `scaling` is its coefficient times the same
+row's scaling multiplier; `growth` is the damage type's CalcCorrectGraph
+evaluated at the stat's value. `tools/damage-sync.js` extracts the four tables
+this needs (`graphs`, `aec`, `reinforce`, `weapons`) into `DAMAGE_CSV`, +72KB.
+
+**The formula is ported, not invented** — from the reference implementation
+that ships alongside the same regulation dump the params came from. Two rules
+in it are easy to miss and both are visible in the UI:
+
+- **Two-handing gives floor(Str x 1.5)**, and bows always count as two-handed.
+- **An unmet requirement does not merely stop that stat helping.** It cuts
+  every damage type the stat feeds to 60% of base.
+
+Giant-Crusher is the case that demonstrates both: it needs 60 Strength, so at
+40 it reads **227**, and two-handed — where 40 counts as 60 — it reads **747**.
+
+**Verification, because a wrong damage formula produces confident numbers and
+nothing downstream can tell.** Three independent layers:
+
+1. `damage-sync.js` recomputes each weapon's **+0 base attack and +0 scaling
+   letters** from the extracted numbers and checks them against the wiki's own
+   infobox values. That is both halves of the formula's input, cross-checked
+   against a separate source: **97.4% of melee base attack and 99.2% of scaling
+   letters match exactly.** It refuses to write above a 10% disagreement, which
+   would mean the extraction is broken rather than drifting.
+2. The residual ~3% is understood: small deltas are patch drift between the
+   dump (1.14) and the wiki, and the larger ones concentrate in bows and
+   shields, which the wiki writes up differently — a bow's listed physical
+   power is 0 because the arrow carries the damage. **The dump is the game's
+   own params and wins.**
+3. `selftest.js` pins the outputs: the growth curve's documented soft caps
+   (0.25 at 18, 0.75 at 60, 0.9 at 80), Uchigatana's +0 base of 115, its +25 at
+   40/40 of 491, and both Giant-Crusher numbers above.
+
+While checking this I confirmed the dump's scaling tier `min` is **inclusive**:
+tested both ways against the wiki, `>=` gives 19 mismatches and `>` gives 78.
+
+**What AR does not cover, deliberately:**
+
+- **Infused weapons.** An affinity rewrites base attack *and* scaling, and
+  those 2,964 rows are not carried. `attackRating()` returns null when an
+  affinity is present, and the row shows no AR rather than a wrong one. This is
+  the single biggest gap and the obvious next data import.
+- **Status buildup scaling** (Arcane raising bleed), **motion values** (so this
+  is per-hit AR, not DPS), and **talisman or buff multipliers**.
+
+A trap worth recording: `parseCSV` used to drop any row without a `name`
+column, which silently emptied all three damage tables — they are keyed by id
+and level. It now keeps any row with content.
+
 ## 7. Repo notes
 
 - Git identity is set **repo-locally** (`Paraiga` /

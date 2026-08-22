@@ -349,37 +349,61 @@ Consequences worth knowing:
   which the new `infusible` column makes checkable.
 - Self-test: 1,713 rows, zero unresolved. CSV download 261KB.
 
+## Done (v20) — attack rating
+- **The tab computes AR.** Every weapon a build names now shows what it
+  actually hits for at that build's final stats: `AR 593 · two-handed 597 ·
+  356 physical + 237 fire`. Scaling letters say whether a stat helps; this says
+  how much, and it is comparable across weapons in a way letters are not.
+- Uses the game's own formula, ported from the reference implementation that
+  ships with the same regulation dump the params came from. `damage-sync.js`
+  extracts the four tables it needs — growth curves, which stats scale which
+  damage type, per-upgrade multipliers, and base attack — as +72KB of CSV.
+- **Two-handing and unmet requirements are both modelled**, and Giant-Crusher
+  shows why they matter: it needs 60 Strength, so at 40 it reads **227**, and
+  two-handed — where 40 counts as 60 — it reads **747**. An unmet requirement
+  does not merely stop a stat helping; it cuts that damage type to 60% of base.
+- **Verified three ways, because a wrong damage formula produces confident
+  numbers.** `damage-sync.js` recomputes +0 base attack and +0 scaling letters
+  from the extracted data and checks them against the wiki's own infobox
+  values — 97.4% and 99.2% exact agreement — and refuses to write above 10%
+  disagreement. `selftest.js` pins the growth curve's documented soft caps and
+  four known AR values. The residual 3% is patch drift plus bow/shield
+  conventions, and is documented rather than hidden.
+- **Infused weapons deliberately show no AR.** An affinity rewrites base attack
+  and scaling both, those rows are not carried, and a wrong number would be
+  worse than none.
+
 ### Where this was heading
-Steps 1–3 of the plan sketched on 2026-08-22 are done: **armor completed**,
-**infusible surfaced**, and **affinities handled** — the last as a correctness
-fix rather than optimizer groundwork, because the checker was rejecting real
-builds.
+The five steps sketched on 2026-08-22 are done or deliberately dropped:
+**(1) stat maths** ✔, **(2) item existence and locations** ✔, **(3) grounded
+generation** ✔, (4) in-tool generation via an API key — **not doing**,
+**(5) attack rating** ✔.
 
-What remains is the step that changes what the tool *is*:
+What is left is the inversion the AR work makes possible.
 
-**Attack rating.** Base attack, `calcCorrectGraphs`, `attackElementCorrects` and
-`reinforceTypes` are all in the regulation dump `params-sync.js` already
-downloads. Computing AR at a given stat spread turns scaling letters — a poor
-proxy, since a B on one weapon can beat an A on another — into real numbers.
-Two-handing (1.5× effective Strength) and the twelve non-standard affinities
-come with it; the affinities are deliberately not in the table today because
-3,216 rows would be noise for a name checker and are substance only for a
-solver.
+**Affinities first.** 2,964 weapon-affinity rows would make AR work for
+"Blood Uchigatana", and more importantly make affinity choice comparable —
+which is most of what optimising a build actually means. This is a data import
+using machinery that already exists, and it is the single highest-value thing
+left.
 
-**Then the inversion.** Once AR is computable, the tool can rank weapons for a
-build instead of checking one, and the prompt carries a computed shortlist
-rather than a 261KB attachment. That is the point at which this stops being a
-build checker and becomes a build generator — and the point at which the CSV
-stops growing, because more data would no longer be going into the prompt.
+**Then ranking.** With AR computable, the tool can solve for the best stat
+spread at a level and rank weapons for it, rather than checking a build someone
+else wrote. The curves are monotonic and concave, so greedy marginal-return
+allocation gets there in microseconds; ranking every weapon-affinity pair at
+level 120 is seconds of offline JS.
 
-Both need verification against an existing calculator built in from the start.
-The formula has real subtleties — per-stat growth curves, affinity calc-correct
-swaps, status buildup scaling — and being slightly wrong produces confident
-nonsense, which is worse than no numbers at all.
+**Then the prompt changes shape.** Today it carries a 261KB attachment. Once
+the tool can rank, it should carry a computed shortlist — twenty candidates
+with real numbers — and let the model do what it is good at: choosing among
+good options, writing the route, and making it cool. That is the point at which
+this stops being a build checker and becomes a build generator, and the point
+at which the CSV stops growing.
 
-Smaller gaps still open: talisman effects are prose rather than numbers (which
-needs `SpEffectParam`, not in this dump), Ash of War FP is 39 of 116 because
-the rest have none, and no table says which weapons an Ash of War fits.
+Smaller gaps, unchanged: talisman effects are prose rather than numbers (needs
+`SpEffectParam`), status buildup does not scale with Arcane, there are no
+motion values so this is per-hit AR rather than DPS, and nothing says which
+weapons an Ash of War fits.
 
 ## Future features
 Deliberately empty. Weapons/armor, upgrade materials and pot tracking were the

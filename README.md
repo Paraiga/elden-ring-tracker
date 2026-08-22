@@ -149,6 +149,21 @@ summon cost.
 Intelligence is told it can neither wield Lusat's Staff (52) nor cast Comet
 Azur (60).
 
+### Attack rating
+
+Every weapon shows what it actually hits for at your build's final stats, using
+the game's own damage formula:
+
+> **Rivers of Blood** — AR 593 · two-handed 597 · 356 physical + 237 fire
+
+Scaling letters tell you whether Dexterity helps. This tells you how much, and
+it compares across weapons in a way letters cannot. Two-handing (which grants
+50% more Strength) and unmet requirements are both modelled — Giant-Crusher
+needs 60 Strength, so at 40 it reads 227, and two-handed it reads 747.
+
+Infused weapons show no attack rating on purpose: an affinity rewrites both
+base damage and scaling, and those numbers are not in the table yet.
+
 **And the tab checks that your build can actually wield its own weapons.** If
 the final phase never reaches 23 Intelligence, a plan built around Moonveil is
 flagged — on the row, in the problem count, and in the correction prompt with
